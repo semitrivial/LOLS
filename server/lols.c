@@ -33,19 +33,25 @@ void parse_lols_file(FILE *fp)
 
     if ( !c )
     {
+      /*
+       * To do: fix this
       if ( (!fSpace && iriptr != iri) || (fSpace && lblptr == label) )
       {
         lacking_label:
         fprintf( stderr, "Error: last line of lols-file lacks a label\n\n" );
         abort();
       }
+       */
       break;
     }
 
     if ( c == '\n' )
     {
+      /*
+       *
       if ( !fSpace )
         goto lacking_label;
+       */
 
       *lblptr = '\0';
       add_lols_entry( iri, label );
