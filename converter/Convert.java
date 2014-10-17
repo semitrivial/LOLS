@@ -22,10 +22,10 @@ public class Convert
   public static void main(String [] args) throws Exception
   {
     Convert c = new Convert();
-    c.run();
+    c.run(args);
   }
 
-  public void run() throws Exception
+  public void run(String [] args) throws Exception
   {
     OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
     OWLOntologyLoaderConfiguration config = new OWLOntologyLoaderConfiguration();
@@ -34,9 +34,17 @@ public class Convert
     File kbfile;
     OWLOntology ont;
 
+    if ( args.length != 1 )
+    {
+      System.err.println( "Syntax: java Convert (owlfile) >(outputfile)" );
+      System.err.println( "..." );
+      System.err.println( "For example: java Convert /home/ricordo/ontology/ricordo.owl >ricordo.LOLS" );
+      return;
+    }
+
     try
     {
-      kbfile = new File("/home/sarala/testkb/ricordo.owl");
+      kbfile = new File(args[0]);
       ont = manager.loadOntologyFromOntologyDocument(new FileDocumentSource(kbfile),config);
     }
     catch(Exception e)
