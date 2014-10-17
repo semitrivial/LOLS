@@ -80,12 +80,14 @@ function jsonoption_clicked()
 
 function format_ajax_response(x)
 {
-  //var parsed = JSON.parse('{"Results":"Hi"}');
   var parsed = JSON.parse(x);
   var retval = "<ul>";
 
-  for ( var i = 0; i < parsed.Results.length; i++ )
-    retval += "<li>" + parsed.Results[i] + "</li>";
+  if ( parsed.Results.length == 0 )
+    retval += "<li>(No results)</li>";
+  else
+    for ( var i = 0; i < parsed.Results.length; i++ )
+      retval += "<li>" + parsed.Results[i] + "</li>";
 
   return retval + "</ul>";
 }
