@@ -33,7 +33,7 @@ function ajax_run()
       g('raw_results_results').innerHTML = xmlhttp.responseText;
       g('formatted_results').innerHTML = format_ajax_response(xmlhttp.responseText);
     }
-    else if ( xmlhttp.readyState == 44 && xmlhttp.status != 200 )
+    else if ( xmlhttp.readyState == 4 && xmlhttp.status != 200 )
     {
       g('raw_results_results').innerHTML = 'Problem connecting to server';
       g('formatted_results').innerHTML = 'There was a problem connecting to the server.';
