@@ -33,7 +33,10 @@ int main( int argc, const char* argv[] )
 
   while(1)
   {
-    usleep(100000);
+    /*
+     * To do: make this commandline-configurable
+     */
+    usleep(10000);
     main_loop();
   }
 }
@@ -103,6 +106,8 @@ void main_loop( void )
       trie **data;
       int len=0, fFirst=0, fShortIRI=0;
 
+      count++;
+
       if ( !strcmp( req->query, "gui" )
       ||   !strcmp( req->query, "/gui" )
       ||   !strcmp( req->query, "gui/" )
@@ -118,8 +123,6 @@ void main_loop( void )
         send_js( req );
         continue;
       }
-
-      count++;
 
       for ( reqptr = (*req->query == '/') ? req->query + 1 : req->query; *reqptr; reqptr++ )
         if ( *reqptr == '/' )
