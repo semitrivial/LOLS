@@ -158,12 +158,8 @@ trie **get_iris_by_label_case_insensitive( char *label_ch )
   char *lowercase = lowercaserize( label_ch );
   trie *label = trie_search( lowercase, label_to_iris_lowercase );
 
-printf( "Debug 1\n");
-
   if ( !label )
     return NULL;
-
-printf( "Debug 2\n");
 
   return label->data;
 }

@@ -143,10 +143,7 @@ void main_loop( void )
       else if ( !strcmp( reqtype, "label" ) )
         data = get_iris_by_label( request );
       else if ( !strcmp( reqtype, "label-case-insensitive" ) )
-{
-printf( "Debug Request: %s\n", request );
         data = get_iris_by_label_case_insensitive( request );
-}
       else if ( !strcmp( reqtype, "label-shortiri" ) )
       {
         data = get_iris_by_label( request );
