@@ -174,7 +174,6 @@ trie *trie_search( char *buf, trie *base )
 {
   char *bptr;
   trie *t;
-  int cnt;
 
   bptr = buf;
   t = base;
@@ -190,10 +189,8 @@ trie *trie_search( char *buf, trie *base )
     {
       trie **child;
 
-      for ( child = t->children, cnt=0; *child; child++ )
+      for ( child = t->children; *child; child++ )
       {
-        cnt++;
-
         if ( *((*child)->label) == *bptr )
         {
           /*
@@ -261,4 +258,129 @@ char *trie_to_static( trie *t )
   }
 
   return &bptr[1];
+}
+
+void trie_search_autocomplete( char *label_ch, trie **buf, trie *base )
+{
+  char *chptr = label_ch;
+  trie *t = base;
+
+  for (;;)
+  {
+    trie_search_autocomplete_loop:
+
+    if ( !*chptr )
+      break;
+
+    if ( !t->children )
+    {
+      *buf = NULL;
+      return;
+    }
+    else
+    {
+      trie **child;
+
+      for ( child = t->children; *child; child++ )
+      {
+        if ( *((*child)->label) == *chptr )
+        {
+          char *chx, *lx;
+
+          for ( chx = chptr, lx = ((*child)->label); ; )
+          {
+            if ( !*lx )
+            {
+              chptr = chx;
+              t = *child;
+              goto trie_search_autocomplete_loop;
+            }
+
+            if ( !*chx )
+            {
+              t = *child;
+              goto trie_search_autocomplete_escape;
+            }
+
+            if ( *lx != *chx )
+            {
+              *buf = NULL;
+              return;
+            }
+
+            lx++;
+            chx++;
+          }
+        }
+      }
+      *buf = NULL;
+      return;
+    }
+  }
+
+  trie_search_autocomplete_escape:
+  {
+    int finds = 0;
+    trie **bptr = buf, **children;
+    trie_wrapper *head=NULL, *tail=NULL, *wrap, *wptr, *wptr_next;
+
+    if ( t->data )
+    {
+      *bptr++ = t;
+      finds++;
+    }
+
+    if ( t->children )
+    {
+      for ( children = t->children; *children; children++ )
+      {
+        CREATE( wrap, trie_wrapper, 1 );
+        wrap->t = *children;
+        LINK2( wrap, head, tail, next, prev );
+      }
+    }
+
+    for ( wptr = head; wptr; wptr = wptr->next )
+    {
+      if ( wptr->t->data )
+      {
+        *bptr++ = wptr->t;
+        finds++;
+        if ( finds >= MAX_AUTOCOMPLETE_RESULTS_PRESORT )
+          break;
+      }
+
+      if ( wptr->t->children )
+      {
+        for ( children = wptr->t->children; *children; children++ )
+        {
+          CREATE( wrap, trie_wrapper, 1 );
+          wrap->t = *children;
+          LINK2( wrap, head, tail, next, prev );
+        }
+      }
+    }
+
+    *bptr = NULL;
+    for ( wptr = head; wptr; wptr = wptr_next )
+    {
+      wptr_next = wptr->next;
+      free( wptr );
+    }
+
+    qsort(buf, finds, sizeof(trie*), cmp_trie_data);
+
+    if ( finds > MAX_AUTOCOMPLETE_RESULTS_POSTSORT )
+      buf[MAX_AUTOCOMPLETE_RESULTS_POSTSORT] = NULL;
+  }
+
+  return;
+}
+
+int cmp_trie_data (const void * a, const void * b)
+{
+  int len1 = strlen( trie_to_static( *((trie**)a) ) );
+  int len2 = strlen( trie_to_static( *((trie**)b) ) );
+
+  return len1-len2;
 }

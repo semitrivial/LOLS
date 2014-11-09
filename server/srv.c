@@ -143,7 +143,10 @@ void main_loop( void )
       else if ( !strcmp( reqtype, "label" ) )
         data = get_iris_by_label( request );
       else if ( !strcmp( reqtype, "label-case-insensitive" ) )
+{
+printf( "Debug Request: %s\n", request );
         data = get_iris_by_label_case_insensitive( request );
+}
       else if ( !strcmp( reqtype, "label-shortiri" ) )
       {
         data = get_iris_by_label( request );
@@ -154,6 +157,10 @@ void main_loop( void )
         data = get_iris_by_label_case_insensitive( request );
         fShortIRI = 1;
       }
+      else if ( !strcmp( reqtype, "autocomp" ) || !strcmp( reqtype, "autocomplete" ) )
+        data = get_autocomplete_labels( request, 0 );
+      else if ( !strcmp( reqtype, "autocomp-case-insensitive" ) || !strcmp( reqtype, "autocomplete-case-insensitive" ) )
+        data = get_autocomplete_labels( request, 1 );
       else
       {
         *reqptr = '/';

@@ -158,8 +158,27 @@ trie **get_iris_by_label_case_insensitive( char *label_ch )
   char *lowercase = lowercaserize( label_ch );
   trie *label = trie_search( lowercase, label_to_iris_lowercase );
 
+printf( "Debug 1\n");
+
   if ( !label )
     return NULL;
 
+printf( "Debug 2\n");
+
   return label->data;
+}
+
+trie **get_autocomplete_labels( char *label_ch, int case_insens )
+{
+  static trie **buf;
+
+  if ( case_insens )
+    label_ch = lowercaserize( label_ch );
+
+  if ( !buf )
+    CREATE( buf, trie *, MAX_AUTOCOMPLETE_RESULTS_POSTSORT + 1 );
+
+  trie_search_autocomplete( label_ch, buf, case_insens ? label_to_iris_lowercase : label_to_iris );
+
+  return buf;
 }

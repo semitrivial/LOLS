@@ -60,6 +60,8 @@ function pulldownchange()
 
   if ( val == 'iri' )
     box.placeholder = 'Enter IRI to look up';
+  else if ( val == 'autocomplete' || val == 'autocomplete-case-insensitive' )
+    box.placeholder = 'Enter incomplete label to look up';
   else
     box.placeholder = 'Enter label to look up';
 }

@@ -6,11 +6,14 @@
 
 #define MAX_STRING_LEN 64000
 #define READ_BLOCK_SIZE 1048576  // 1024 * 1024.  For QUICK_GETC.
+#define MAX_AUTOCOMPLETE_RESULTS_PRESORT 30
+#define MAX_AUTOCOMPLETE_RESULTS_POSTSORT 10
 
 /*
  * Typedefs
  */
 typedef struct TRIE trie;
+typedef struct TRIE_WRAPPER trie_wrapper;
 
 /*
  * Structures
@@ -21,6 +24,13 @@ struct TRIE
   char *label;
   trie **children;
   trie **data;
+};
+
+struct TRIE_WRAPPER
+{
+  trie_wrapper *next;
+  trie_wrapper *prev;
+  trie *t;
 };
 
 /*
@@ -43,6 +53,7 @@ void add_lols_entry( char *iri_ch, char *label_ch );
 trie **get_labels_by_iri( char *iri_ch );
 trie **get_iris_by_label( char *label_ch );
 trie **get_iris_by_label_case_insensitive( char *label_ch );
+trie **get_autocomplete_labels( char *label_ch, int case_insens );
 
 /*
  * srv.c
@@ -56,6 +67,8 @@ trie *blank_trie(void);
 trie *trie_strdup( char *buf, trie *base );
 trie *trie_search( char *buf, trie *base );
 char *trie_to_static( trie *t );
+void trie_search_autocomplete( char *label_ch, trie **buf, trie *base );
+int cmp_trie_data (const void * a, const void * b);
 
 /*
  * util.c
