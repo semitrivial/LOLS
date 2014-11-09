@@ -326,7 +326,10 @@ void trie_search_autocomplete( char *label_ch, trie **buf, trie *base )
 
     if ( t->data )
     {
-      *bptr++ = t;
+      if ( base == label_to_iris )
+        *bptr++ = t;
+      else
+        *bptr++ = t->data[0]->data[0];
       finds++;
     }
 
@@ -344,7 +347,10 @@ void trie_search_autocomplete( char *label_ch, trie **buf, trie *base )
     {
       if ( wptr->t->data )
       {
-        *bptr++ = wptr->t;
+        if ( base == label_to_iris )
+          *bptr++ = wptr->t;
+        else
+          *bptr++ = wptr->t->data[0]->data[0];
         finds++;
         if ( finds >= MAX_AUTOCOMPLETE_RESULTS_PRESORT )
           break;
