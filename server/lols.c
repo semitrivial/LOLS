@@ -172,7 +172,7 @@ trie **get_autocomplete_labels( char *label_ch, int case_insens )
     label_ch = lowercaserize( label_ch );
 
   if ( !buf )
-    CREATE( buf, trie *, MAX_AUTOCOMPLETE_RESULTS_POSTSORT + 1 );
+    CREATE( buf, trie *, MAX_AUTOCOMPLETE_RESULTS_PRESORT + 1 );
 
   trie_search_autocomplete( label_ch, buf, case_insens ? label_to_iris_lowercase : label_to_iris );
 
