@@ -662,5 +662,46 @@ char *load_file( char *filename )
 
 void parse_params( char *buf, int *fShortIRI, int *fCaseInsens )
 {
-  return;
+  char *bptr;
+  char *param;
+  int fEnd;
+
+  for ( bptr = buf; *bptr; bptr++ )
+    if ( *bptr == '?' )
+      break;
+
+  if ( !*bptr )
+    return;
+
+  *bptr++ = '\0';
+  param = bptr;
+  fEnd = 0;
+
+  for (;;)
+  {
+    if ( *bptr == '&' || *bptr == '\0' )
+    {
+      if ( *bptr == '\0' )
+        fEnd = 1;
+      else
+        *bptr = '\0';
+
+      if ( !strcmp( param, "case-insensitive" )
+      ||   !strcmp( param, "case-ins" )
+      ||   !strcmp( param, "insensitive" )
+      ||   !strcmp( param, "ins" ) )
+        *fCaseInsens = 1;
+      else
+      if ( !strcmp( param, "short-iri" )
+      ||   !strcmp( param, "short" ) )
+        *fShortIRI = 1;
+
+      if ( fEnd )
+        return;
+
+      param = &bptr[1];
+    }
+
+    bptr++;
+  }
 }
