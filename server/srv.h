@@ -106,3 +106,4 @@ char *current_date(void);
 void send_gui( http_request *req );
 void send_js( http_request *req );
 char *load_file( char *filename );
+void parse_params( char *buf, int *fShortIRI, int *fCaseInsens );

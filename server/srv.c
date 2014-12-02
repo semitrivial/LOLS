@@ -104,7 +104,7 @@ void main_loop( void )
     {
       char *reqptr, *reqtype, *request, repl[MAX_STRING_LEN], *rptr;
       trie **data;
-      int len=0, fFirst=0, fShortIRI=0;
+      int len=0, fFirst=0, fShortIRI=0, fCaseInsens=0;
 
       count++;
 
@@ -136,13 +136,17 @@ void main_loop( void )
 
       *reqptr = '\0';
       reqtype = (*req->query == '/') ? req->query + 1 : req->query;
+
+      parse_params( &reqptr[1], &fShortIRI, &fCaseInsens );
+
       request = url_decode(&reqptr[1]);
 
       if ( !strcmp( reqtype, "iri" ) )
         data = get_labels_by_iri( request );
-      else if ( !strcmp( reqtype, "label" ) )
+      else if ( !strcmp( reqtype, "label" ) && !fCaseInsens )
         data = get_iris_by_label( request );
-      else if ( !strcmp( reqtype, "label-case-insensitive" ) )
+      else if ( !strcmp( reqtype, "label" )
+           ||   !strcmp( reqtype, "label-case-insensitive" ) )
         data = get_iris_by_label_case_insensitive( request );
       else if ( !strcmp( reqtype, "label-shortiri" ) )
       {
@@ -654,4 +658,9 @@ char *load_file( char *filename )
     if ( !*bptr )
       return buf;
   }
+}
+
+void parse_params( char *buf, int *fShortIRI, int *fCaseInsens )
+{
+  return;
 }
