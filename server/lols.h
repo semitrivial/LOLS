@@ -79,3 +79,4 @@ void init_html_codes( void );
 char *lowercaserize( char *x );
 char *get_url_shortform( char *iri );
 char *url_decode(char *str);
+int is_number( const char *arg );

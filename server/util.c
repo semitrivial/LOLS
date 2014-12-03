@@ -157,3 +157,27 @@ char *url_decode(char *str)
   *pbuf = '\0';
   return buf;
 }
+
+int is_number( const char *arg )
+{
+  int first = 1;
+
+  if ( *arg == '\0' )
+    return 0;
+
+  for ( ; *arg != '\0'; arg++ )
+  {
+    if ( first && *arg == '-')
+    {
+      first = 0;
+      continue;
+    }
+
+    if ( !isdigit(*arg) )
+      return 0;
+
+    first = 0;
+  }
+
+  return 1;
+}

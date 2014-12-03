@@ -86,7 +86,7 @@ int srvsock;
 /*
  * Local function prototypes
  */
-void init_lols_http_server( void );
+void init_lols_http_server( int port );
 void http_update_connections( void );
 void http_kill_socket( http_conn *c );
 void free_http_request( http_request *r );
