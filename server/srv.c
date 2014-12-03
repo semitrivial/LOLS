@@ -567,7 +567,7 @@ void send_400_response( http_request *req )
                 "Date: %s\r\n"
                 "Content-Type: text/plain; charset=utf-8\r\n"
                 "%s"
-                "Content-Length: %d\r\n"
+                "Content-Length: %zd\r\n"
                 "\r\n"
                 "Syntax Error",
                 current_date(),
@@ -590,7 +590,7 @@ void send_200_with_type( http_request *req, char *txt, char *type )
                 "Date: %s\r\n"
                 "Content-Type: %s; charset=utf-8\r\n"
                 "%s"
-                "Content-Length: %d\r\n"
+                "Content-Length: %zd\r\n"
                 "\r\n"
                 "%s",
                 current_date(),
