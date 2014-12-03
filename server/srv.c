@@ -67,7 +67,7 @@ void init_lols_http_server( int port )
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
-  sprintf( portstr, "%d", 5052 );
+  sprintf( portstr, "%d", port );
 
   if ( (status=getaddrinfo(NULL,portstr,&hints,&servinfo)) != 0 )
   {
