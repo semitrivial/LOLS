@@ -2,11 +2,17 @@
 
 ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
 {
-  char *end = &ucl[strlen(ucl)];
+  char *end = &ucl[strlen(ucl)-1];
   char *ptr;
   ucl_syntax *s;
   int lparens, token_ready;
   trie *t;
+
+  if ( end < ucl )
+  {
+    *err = strdup( "Empty expression or sub-expression" );
+    return NULL;
+  }
 
   while ( *ucl == ' ' )
     ucl++;
@@ -14,7 +20,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
   while ( *end == ' ' && end > ucl )
     end--;
 
-  if ( ucl == end )
+  if ( ucl >= end )
   {
     *err = strdup( "Empty expression or sub-expression" );
     return NULL;
@@ -47,7 +53,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
   {
     CREATE( s, ucl_syntax, 1 );
     s->type = UCL_SYNTAX_NOT;
-    s->sub1 = parse_ucl_syntax( &ucl[1], err );
+    s->sub1 = parse_ucl_syntax( &ucl[strlen("not")], err );
 
     if ( !s->sub1 )
     {
@@ -135,7 +141,10 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
             return NULL;
           }
 
-          s->sub2 = parse_ucl_syntax( &ucl[(*ptr == 'a') ? strlen("and") : strlen("or") ], err );
+          if ( *ptr == 'a' )
+            s->sub2 = parse_ucl_syntax( &ucl[strlen("and")], err );
+          else
+            s->sub2 = parse_ucl_syntax( &ucl[strlen("or")], err );
 
           if ( !s->sub2 )
           {
@@ -158,7 +167,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
 
   if ( !t )
   {
-    trie_search( ucl, iri_to_labels );
+    t = trie_search( ucl, iri_to_labels );
 
     if ( !t )
     {
