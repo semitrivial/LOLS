@@ -2,8 +2,7 @@
 
 ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
 {
-  char *end = &ucl[strlen(ucl)-1];
-  char *ptr;
+  char *end = &ucl[strlen(ucl)-1], *ptr, *shorturl, *unshort;
   ucl_syntax *s;
   int lparens, token_ready;
   trie *t;
@@ -64,10 +63,15 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
     CREATE( s->toString, char, strlen( s->sub1->toString ) + strlen( "not " ) + 1 );
 
     sprintf( s->toString, "not %s", s->sub1->toString );
+
+    return s;
   }
 
   for ( ptr = ucl, lparens = token_ready = 0; *ptr; ptr++ )
   {
+    if ( lparens && *ptr != '(' && *ptr != ')' )
+      continue;
+
     switch( *ptr )
     {
       default:
@@ -107,9 +111,15 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
 
         if ( *ptr == 's' && str_begins( ptr, "some" ) )
         {
+          if ( ptr == ucl )
+          {
+            *err = strdup( "Encountered 'some' with no relation" );
+            return NULL;
+          }
+
           CREATE( s, ucl_syntax, 1 );
           s->type = UCL_SYNTAX_SOME;
-          s->sub1 = parse_ucl_syntax( &ucl[strlen("some")], err );
+          s->sub1 = parse_ucl_syntax( &ptr[strlen("some")], err );
 
           if ( !s->sub1 )
           {
@@ -117,10 +127,12 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
             return NULL;
           }
 
-          s->reln = read_some_relation( ucl, ptr );
+          s->reln = read_some_relation( ucl, &ptr[-1] );
 
           CREATE( s->toString, char, strlen( s->reln ) + strlen( " some " ) + strlen( s->sub1->toString ) + 1 );
           sprintf( s->toString, "%s some %s", s->reln, s->sub1->toString );
+
+          return s;
         }
 
         if ( ( *ptr == 'a' && str_begins( ptr, "and" ) )
@@ -132,30 +144,30 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
           CREATE( s, ucl_syntax, 1 );
           s->type = (*ptr == 'a') ? UCL_SYNTAX_AND : UCL_SYNTAX_OR;
 
-          *ptr = '\0';
-          s->sub1 = parse_ucl_syntax( ucl, err );
+          if ( *ptr == 'a' )
+            s->sub2 = parse_ucl_syntax( &ptr[strlen("and")], err );
+          else
+            s->sub2 = parse_ucl_syntax( &ptr[strlen("or")], err );
 
-          if ( !s->sub1 )
+          if ( !s->sub2 )
           {
             free( s );
             return NULL;
           }
 
-          if ( *ptr == 'a' )
-            s->sub2 = parse_ucl_syntax( &ucl[strlen("and")], err );
-          else
-            s->sub2 = parse_ucl_syntax( &ucl[strlen("or")], err );
+          *ptr = '\0';
+          s->sub1 = parse_ucl_syntax( ucl, err );
 
-          if ( !s->sub2 )
+          if ( !s->sub1 )
           {
-            kill_ucl_syntax( s->sub1 );
+            kill_ucl_syntax( s->sub2 );
             free( s );
             return NULL;
           }
 
           CREATE( s->toString, char, strlen( s->sub1->toString ) + strlen( " and " ) + strlen( s->sub2->toString ) + 1 );
 
-          sprintf( s->toString, "%s %s %s", s->sub1->toString, (*ptr=='a') ? "and" : "or", s->sub2->toString );
+          sprintf( s->toString, "%s %s %s", s->sub1->toString, (s->type == UCL_SYNTAX_AND) ? "and" : "or", s->sub2->toString );
 
           return s;
         }
@@ -165,11 +177,25 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
 
   t = trie_search( ucl, label_to_iris_lowercase );
 
-  if ( !t )
+  if ( t && t->data && *t->data )
+  {
+    CREATE( s, ucl_syntax, 1 );
+    unshort = trie_to_static( *t->data );
+    shorturl = get_url_shortform( unshort );
+    s->toString = strdup( shorturl ? shorturl : unshort );
+  }
+  else
   {
     t = trie_search( ucl, iri_to_labels );
 
-    if ( !t )
+    if ( t )
+    {
+      CREATE( s, ucl_syntax, 1 );
+      unshort  = trie_to_static( t );
+      shorturl = get_url_shortform( unshort );
+      s->toString = strdup( shorturl ? shorturl : unshort );
+    }
+    else
     {
       CREATE( *err, char, strlen( ucl ) + strlen( "Unrecognized IRI: " ) );
       sprintf( *err, "Unrecognized IRI: %s", ucl );
@@ -177,39 +203,33 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
     }
   }
 
-  CREATE( s, ucl_syntax, 1 );
   s->type = UCL_SYNTAX_BASE;
   s->iri = t;
-
-  ptr = trie_to_static( s->iri );
-
-  CREATE( s->toString, char, strlen(ptr) + 1 );
-
-  sprintf( s->toString, "%s", ptr );
 
   return s;
 }
 
 int str_begins( char *full, char *init )
 {
-  char tmp;
-  int retval;
-  int full_len = strlen( full );
-  int init_len = strlen( init );
+  char *fptr = full, *iptr = init;
 
-  if ( full_len < init_len )
-    return 0;
+  for (;;)
+  {
+    if ( !*fptr && !*iptr )
+      return 1;
 
-  tmp = full[init_len];
+    if ( !*fptr )
+      return 0;
 
-  full[init_len] = '\0';
+    if ( !*iptr )
+      return ( !*fptr || (*fptr==' ') || (*fptr=='(') );
 
-  retval = !strcmp( full, init )
-        && ( tmp == ' ' || tmp == '(' || tmp == '\0' );
+    if ( LOWER( *fptr ) != LOWER( *iptr ) )
+      return 0;
 
-  full[init_len] = tmp;
-
-  return retval;
+    fptr++;
+    iptr++;
+  }
 }
 
 char *read_some_relation( char *left, char *right )
@@ -225,17 +245,16 @@ char *read_some_relation( char *left, char *right )
       return "";
   }
 
-  do
+  while ( right > left && right[-1] == ' ' )
   {
     right--;
 
     if ( left == right )
       return "";
   }
-  while ( *right == ' ' );
 
   if ( *left == '(' && *right == ')' )
-    return read_some_relation( &left[1], right );
+    return read_some_relation( &left[1], right-1 );
 
   *right = '\0';
 
