@@ -154,6 +154,14 @@ void main_loop( void )
 
       request = url_decode(&reqptr[1]);
 
+      if ( !strcmp( reqtype, "uclsyntax" )
+      ||   !strcmp( reqtype, "ucl_syntax" )
+      ||   !strcmp( reqtype, "ucl-syntax" ) )
+      {
+        handle_ucl_syntax_request( request, req );
+        return;
+      }
+
       if ( !strcmp( reqtype, "iri" ) )
         data = get_labels_by_iri( request );
       else if ( !strcmp( reqtype, "label" ) && !fCaseInsens )
@@ -717,4 +725,38 @@ void parse_params( char *buf, int *fShortIRI, int *fCaseInsens )
 
     bptr++;
   }
+}
+
+void handle_ucl_syntax_request( char *request, http_request *req )
+{
+  ucl_syntax *s;
+  char *err;
+
+  s = parse_ucl_syntax( request, &err );
+
+  if ( !s )
+  {
+    char *buf;
+
+    if ( err )
+    {
+      CREATE( buf, char, strlen( err ) + strlen( "Error: " ) );
+      sprintf( buf, "Error: %s", err );
+
+      send_200_response( req, buf );
+
+      free( buf );
+      free( err );
+    }
+    else
+      send_200_response( req, "Malformed UCL Syntax" );
+
+    return;
+  }
+
+  send_200_response( req, s->toString );
+
+  kill_ucl_syntax( s );
+
+  return;
 }

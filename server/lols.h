@@ -14,6 +14,7 @@
  */
 typedef struct TRIE trie;
 typedef struct TRIE_WRAPPER trie_wrapper;
+typedef struct UCL_SYNTAX ucl_syntax;
 
 /*
  * Structures
@@ -32,6 +33,21 @@ struct TRIE_WRAPPER
   trie_wrapper *prev;
   trie *t;
 };
+
+struct UCL_SYNTAX
+{
+  int type;
+  ucl_syntax *sub1;
+  ucl_syntax *sub2;
+  char *reln;
+  trie *iri;
+  char *toString;
+};
+
+typedef enum
+{
+  UCL_BLANK, UCL_SYNTAX_BASE, UCL_SYNTAX_PAREN, UCL_SYNTAX_SOME, UCL_SYNTAX_AND, UCL_SYNTAX_OR, UCL_SYNTAX_NOT
+} ucl_syntax_types;
 
 /*
  * Global variables
@@ -80,3 +96,11 @@ char *lowercaserize( char *x );
 char *get_url_shortform( char *iri );
 char *url_decode(char *str);
 int is_number( const char *arg );
+
+/*
+ * ucl.c
+ */
+ucl_syntax *parse_ucl_syntax( char *ucl, char **err );
+int str_begins( char *full, char *init );
+char *read_some_relation( char *left, char *right );
+void kill_ucl_syntax( ucl_syntax *s );

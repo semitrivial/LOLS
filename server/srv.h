@@ -107,3 +107,4 @@ void send_gui( http_request *req );
 void send_js( http_request *req );
 char *load_file( char *filename );
 void parse_params( char *buf, int *fShortIRI, int *fCaseInsens );
+void handle_ucl_syntax_request( char *request, http_request *req );
