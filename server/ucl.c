@@ -1,6 +1,6 @@
 #include "lols.h"
 
-ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
+ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig **ambig_tail )
 {
   char *end = &ucl[strlen(ucl)-1], *ptr, *shorturl, *unshort;
   ucl_syntax *s;
@@ -33,7 +33,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
 
     CREATE( s, ucl_syntax, 1 );
     s->type = UCL_SYNTAX_PAREN;
-    s->sub1 = parse_ucl_syntax( &ucl[1], err );
+    s->sub1 = parse_ucl_syntax( &ucl[1], err, ambig_head, ambig_tail );
 
     if ( !s->sub1 )
     {
@@ -52,7 +52,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
   {
     CREATE( s, ucl_syntax, 1 );
     s->type = UCL_SYNTAX_NOT;
-    s->sub1 = parse_ucl_syntax( &ucl[strlen("not")], err );
+    s->sub1 = parse_ucl_syntax( &ucl[strlen("not")], err, ambig_head, ambig_tail );
 
     if ( !s->sub1 )
     {
@@ -119,7 +119,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
 
           CREATE( s, ucl_syntax, 1 );
           s->type = UCL_SYNTAX_SOME;
-          s->sub1 = parse_ucl_syntax( &ptr[strlen("some")], err );
+          s->sub1 = parse_ucl_syntax( &ptr[strlen("some")], err, ambig_head, ambig_tail );
 
           if ( !s->sub1 )
           {
@@ -145,9 +145,9 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
           s->type = (*ptr == 'a') ? UCL_SYNTAX_AND : UCL_SYNTAX_OR;
 
           if ( *ptr == 'a' )
-            s->sub2 = parse_ucl_syntax( &ptr[strlen("and")], err );
+            s->sub2 = parse_ucl_syntax( &ptr[strlen("and")], err, ambig_head, ambig_tail );
           else
-            s->sub2 = parse_ucl_syntax( &ptr[strlen("or")], err );
+            s->sub2 = parse_ucl_syntax( &ptr[strlen("or")], err, ambig_head, ambig_tail );
 
           if ( !s->sub2 )
           {
@@ -156,7 +156,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
           }
 
           *ptr = '\0';
-          s->sub1 = parse_ucl_syntax( ucl, err );
+          s->sub1 = parse_ucl_syntax( ucl, err, ambig_head, ambig_tail );
 
           if ( !s->sub1 )
           {
@@ -180,9 +180,31 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err )
   if ( t && t->data && *t->data )
   {
     CREATE( s, ucl_syntax, 1 );
-    unshort = trie_to_static( *t->data );
-    shorturl = get_url_shortform( unshort );
-    s->toString = strdup( shorturl ? shorturl : unshort );
+
+    if ( !is_ambiguous(t->data) )
+    {
+      unshort = trie_to_static( *t->data );
+      shorturl = get_url_shortform( unshort );
+      s->toString = strdup( shorturl ? shorturl : unshort );
+    }
+    else
+    {
+      ambig *a;
+
+      s->toString = strdup( "[Ambiguous]" );
+
+      for ( a = *ambig_head; a; a = a->next )
+        if ( a->data == t->data && !strcmp( a->label, ucl ) )
+          break;
+
+      if ( !a )
+      {
+        CREATE( a, ambig, 1 );
+        a->data = t->data;
+        a->label = strdup( ucl );
+        LINK2( a, *ambig_head, *ambig_tail, next, prev );
+      }
+    }
   }
   else
   {
@@ -260,3 +282,109 @@ char *read_some_relation( char *left, char *right )
 
   return left;
 }
+
+int is_ambiguous( trie **data )
+{
+  char buf[MAX_STRING_LEN];
+  trie **ptr, **left;
+
+  if ( !data[0] || !data[1] )
+    return 0;
+
+  for ( ptr = &data[1]; *ptr; ptr++ )
+  {
+    sprintf( buf, "%s", trie_to_static( *ptr ) );
+
+    for ( left = data; left < ptr; left++ )
+    {
+      if ( strcmp( trie_to_static( *left ), buf ) )
+        return 1;
+    }
+  }
+
+  return 0;
+}
+
+void free_ambigs( ambig *head )
+{
+  ambig *a, *a_next;
+
+  for ( a = head; a; a = a_next )
+  {
+    a_next = a->next;
+    free( a->label );
+    free( a );
+  }
+}
+
+char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail )
+{
+  int len;
+  ambig *a;
+  trie **data;
+  char *buf, *bptr;
+
+  len = strlen( "{\n  \"Result\": \"\",\n  \"Ambiguities\":\n  [\n  ]\n}" );
+
+  len += strlen( s->toString );
+
+  for ( a = head; a; a = a->next )
+  {
+    len += strlen( "    {\n      \"label\": \"\",\n      \"options\":\n      [\n      ]\n    },\n" );
+    len += strlen( a->label );
+
+    for ( data = a->data; *data; data++ )
+    {
+      len += strlen( "        \"\",\n" );
+      len += strlen( trie_to_static( *data ) );
+    }
+  }
+
+  CREATE( buf, char, len+1 );
+
+  sprintf( buf, "{\n  \"Result\": \"%s\",\n  \"Ambiguities\":\n  [\n", s->toString );
+
+  for ( a = head, bptr = &buf[strlen(buf)]; a; a = a->next )
+  {
+    sprintf( bptr, "    {\n      \"label\": \"%s\",\n      \"options\":\n      [\n", a->label );
+    bptr = &bptr[strlen(bptr)];
+
+    for ( data = a->data; *data; data++ )
+    {
+      sprintf( bptr, "        \"%s\"%s\n", trie_to_static( *data ), data[1] ? "," : "" );
+      bptr = &bptr[strlen(bptr)];
+    }
+
+    sprintf( bptr, "      ]\n    }%s\n", a != tail ? "," : "" );
+    bptr = &bptr[strlen(bptr)];
+  }
+
+  sprintf( bptr, "  ]\n}" );
+
+  return buf;
+}
+
+/*
+{
+  "Result": "...",
+  "Ambiguities":
+  [
+    {
+      "label": "...",
+      "options":
+      [
+        "...",
+        "..."
+      ]
+    },
+    {
+      "label": "...",
+      "options":
+      [
+        "...",
+        "..."
+      ]
+    }
+  ]
+}
+*/

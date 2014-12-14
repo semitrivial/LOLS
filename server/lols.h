@@ -15,6 +15,7 @@
 typedef struct TRIE trie;
 typedef struct TRIE_WRAPPER trie_wrapper;
 typedef struct UCL_SYNTAX ucl_syntax;
+typedef struct AMBIG ambig;
 
 /*
  * Structures
@@ -48,6 +49,14 @@ typedef enum
 {
   UCL_BLANK, UCL_SYNTAX_BASE, UCL_SYNTAX_PAREN, UCL_SYNTAX_SOME, UCL_SYNTAX_AND, UCL_SYNTAX_OR, UCL_SYNTAX_NOT
 } ucl_syntax_types;
+
+struct AMBIG
+{
+  ambig *next;
+  ambig *prev;
+  trie **data;
+  char *label;
+};
 
 /*
  * Global variables
@@ -100,7 +109,10 @@ int is_number( const char *arg );
 /*
  * ucl.c
  */
-ucl_syntax *parse_ucl_syntax( char *ucl, char **err );
+ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig **ambig_tail );
 int str_begins( char *full, char *init );
 char *read_some_relation( char *left, char *right );
 void kill_ucl_syntax( ucl_syntax *s );
+int is_ambiguous( trie **data );
+void free_ambigs( ambig *head );
+char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail );

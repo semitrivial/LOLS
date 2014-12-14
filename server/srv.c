@@ -730,9 +730,10 @@ void parse_params( char *buf, int *fShortIRI, int *fCaseInsens )
 void handle_ucl_syntax_request( char *request, http_request *req )
 {
   ucl_syntax *s;
-  char *err;
+  char *err = NULL, *output;
+  ambig *head = NULL, *tail = NULL;
 
-  s = parse_ucl_syntax( request, &err );
+  s = parse_ucl_syntax( request, &err, &head, &tail );
 
   if ( !s )
   {
@@ -751,12 +752,22 @@ void handle_ucl_syntax_request( char *request, http_request *req )
     else
       send_200_response( req, "Malformed UCL Syntax" );
 
+    if ( head )
+      free_ambigs( head );
+
     return;
   }
 
-  send_200_response( req, s->toString );
+  output = ucl_syntax_output( s, head, tail );
+
+  send_200_response( req, output );
+
+  free( output );
 
   kill_ucl_syntax( s );
+
+  if ( head )
+    free_ambigs ( head );
 
   return;
 }
