@@ -741,8 +741,8 @@ void handle_ucl_syntax_request( char *request, http_request *req )
 
     if ( err )
     {
-      CREATE( buf, char, strlen( err ) + strlen( "Error: " ) );
-      sprintf( buf, "Error: %s", err );
+      CREATE( buf, char, strlen( err ) + strlen( "{\"Error\": \"\"}" ) );
+      sprintf( buf, "{\"Error\": \"%s\"}", err );
 
       send_200_response( req, buf );
 
@@ -750,7 +750,7 @@ void handle_ucl_syntax_request( char *request, http_request *req )
       free( err );
     }
     else
-      send_200_response( req, "Malformed UCL Syntax" );
+      send_200_response( req, "{\"Error\": \"Malformed UCL Syntax\"}" );
 
     if ( head )
       free_ambigs( head );
