@@ -1,6 +1,6 @@
 #include "lols.h"
 
-ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig **ambig_tail )
+ucl_syntax *parse_ucl_syntax( char *ucl, char **err, char **maybe_err, ambig **ambig_head, ambig **ambig_tail )
 {
   char *end = &ucl[strlen(ucl)-1], *ptr, *shorturl, *unshort;
   ucl_syntax *s;
@@ -33,7 +33,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig *
 
     CREATE( s, ucl_syntax, 1 );
     s->type = UCL_SYNTAX_PAREN;
-    s->sub1 = parse_ucl_syntax( &ucl[1], err, ambig_head, ambig_tail );
+    s->sub1 = parse_ucl_syntax( &ucl[1], err, maybe_err, ambig_head, ambig_tail );
 
     if ( !s->sub1 )
     {
@@ -52,7 +52,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig *
   {
     CREATE( s, ucl_syntax, 1 );
     s->type = UCL_SYNTAX_NOT;
-    s->sub1 = parse_ucl_syntax( &ucl[strlen("not")], err, ambig_head, ambig_tail );
+    s->sub1 = parse_ucl_syntax( &ucl[strlen("not")], err, maybe_err, ambig_head, ambig_tail );
 
     if ( !s->sub1 )
     {
@@ -119,7 +119,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig *
 
           CREATE( s, ucl_syntax, 1 );
           s->type = UCL_SYNTAX_SOME;
-          s->sub1 = parse_ucl_syntax( &ptr[strlen("some")], err, ambig_head, ambig_tail );
+          s->sub1 = parse_ucl_syntax( &ptr[strlen("some")], err, maybe_err, ambig_head, ambig_tail );
 
           if ( !s->sub1 )
           {
@@ -145,9 +145,9 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig *
           s->type = (*ptr == 'a') ? UCL_SYNTAX_AND : UCL_SYNTAX_OR;
 
           if ( *ptr == 'a' )
-            s->sub2 = parse_ucl_syntax( &ptr[strlen("and")], err, ambig_head, ambig_tail );
+            s->sub2 = parse_ucl_syntax( &ptr[strlen("and")], err, maybe_err, ambig_head, ambig_tail );
           else
-            s->sub2 = parse_ucl_syntax( &ptr[strlen("or")], err, ambig_head, ambig_tail );
+            s->sub2 = parse_ucl_syntax( &ptr[strlen("or")], err, maybe_err, ambig_head, ambig_tail );
 
           if ( !s->sub2 )
           {
@@ -156,7 +156,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig *
           }
 
           *ptr = '\0';
-          s->sub1 = parse_ucl_syntax( ucl, err, ambig_head, ambig_tail );
+          s->sub1 = parse_ucl_syntax( ucl, err, maybe_err, ambig_head, ambig_tail );
 
           if ( !s->sub1 )
           {
@@ -219,9 +219,14 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig *
     }
     else
     {
-      CREATE( *err, char, strlen( ucl ) + strlen( "Unrecognized IRI: " ) );
-      sprintf( *err, "Unrecognized IRI: %s", ucl );
-      return NULL;
+      CREATE( s, ucl_syntax, 1 );
+      s->toString = strdup( ucl );
+
+      if ( !*maybe_err )
+      {
+        CREATE( *maybe_err, char, strlen(ucl) + strlen( "Unrecognized term: " ) );
+        sprintf( *maybe_err, "Unrecognized term: %s", ucl );
+      }
     }
   }
 
@@ -317,16 +322,19 @@ void free_ambigs( ambig *head )
   }
 }
 
-char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail )
+char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail, char *possible_error )
 {
   int len;
   ambig *a;
   trie **data;
   char *buf, *bptr;
 
-  len = strlen( "{\n  \"Result\": \"\",\n  \"Ambiguities\":\n  [\n  ]\n}" );
+  len = strlen( "{\n  \"Result\": \"\",\n  \"Ambiguities\":\n  [\n  ],\n}" );
 
   len += strlen( s->toString );
+
+  if ( possible_error )
+    len += strlen( possible_error ) + strlen( "  \"Possible_error\": \"\"\n" );
 
   for ( a = head; a; a = a->next )
   {
@@ -359,7 +367,10 @@ char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail )
     bptr = &bptr[strlen(bptr)];
   }
 
-  sprintf( bptr, "  ]\n}" );
+  if ( possible_error )
+    sprintf( bptr, "  ],\n  \"Possible_error\": \"%s\"\n}", possible_error );
+  else
+    sprintf( bptr, "  ]\n}" );
 
   return buf;
 }
@@ -385,6 +396,7 @@ char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail )
         "..."
       ]
     }
-  ]
+  ],
+  Possible_error: "..."
 }
 */

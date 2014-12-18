@@ -109,10 +109,10 @@ int is_number( const char *arg );
 /*
  * ucl.c
  */
-ucl_syntax *parse_ucl_syntax( char *ucl, char **err, ambig **ambig_head, ambig **ambig_tail );
+ucl_syntax *parse_ucl_syntax( char *ucl, char **err, char **maybe_err, ambig **ambig_head, ambig **ambig_tail );
 int str_begins( char *full, char *init );
 char *read_some_relation( char *left, char *right );
 void kill_ucl_syntax( ucl_syntax *s );
 int is_ambiguous( trie **data );
 void free_ambigs( ambig *head );
-char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail );
+char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail, char *possible_error );

@@ -730,10 +730,10 @@ void parse_params( char *buf, int *fShortIRI, int *fCaseInsens )
 void handle_ucl_syntax_request( char *request, http_request *req )
 {
   ucl_syntax *s;
-  char *err = NULL, *output;
+  char *err = NULL, *maybe_err = NULL, *output;
   ambig *head = NULL, *tail = NULL;
 
-  s = parse_ucl_syntax( request, &err, &head, &tail );
+  s = parse_ucl_syntax( request, &err, &maybe_err, &head, &tail );
 
   if ( !s )
   {
@@ -754,11 +754,13 @@ void handle_ucl_syntax_request( char *request, http_request *req )
 
     if ( head )
       free_ambigs( head );
+    if ( maybe_err )
+      free( maybe_err );
 
     return;
   }
 
-  output = ucl_syntax_output( s, head, tail );
+  output = ucl_syntax_output( s, head, tail, maybe_err );
 
   send_200_response( req, output );
 
@@ -767,7 +769,9 @@ void handle_ucl_syntax_request( char *request, http_request *req )
   kill_ucl_syntax( s );
 
   if ( head )
-    free_ambigs ( head );
+    free_ambigs( head );
+  if ( maybe_err )
+    free( maybe_err );
 
   return;
 }
