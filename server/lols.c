@@ -15,7 +15,7 @@ void parse_lols_file(FILE *fp)
 {
   char c;
   char iri[MAX_STRING_LEN], *iriptr = iri;
-  char label[MAX_STRING_LEN], *lblptr;
+  char label[MAX_STRING_LEN], *lblptr = label;
   int fSpace = 0;
   int linenum = 1;
 
