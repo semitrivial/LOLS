@@ -79,7 +79,10 @@ do\
   #define QUICK_GETC( ch, fp )\
   do\
   {\
-    ch = getc(fp);\
+    if ( feof(fp) )\
+      ch = '\0';\
+    else\
+      ch = getc(fp);\
   }\
   while(0)
 
