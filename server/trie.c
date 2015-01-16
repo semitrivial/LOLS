@@ -4,6 +4,22 @@ trie *iri_to_labels;
 trie *label_to_iris;
 trie *label_to_iris_lowercase;
 
+#ifdef LOLS_WINDOWS
+char *strndup(const char *x, int len)
+{
+  char *buf;
+  int x_len = strlen(x);
+
+  if (len < x_len)
+    x_len = len;
+
+  CREATE( buf, char, len + 1 );
+
+  buf[x_len] = '\0';
+  return memcpy(buf, x, x_len);
+}
+#endif
+
 trie *blank_trie( void )
 {
   trie *t;
