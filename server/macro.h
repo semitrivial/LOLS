@@ -74,22 +74,35 @@ do\
         }\
 } while(0)
 
-/*
- * Quickly read char from file
- */
-#define QUICK_GETC( ch, fp )\
-do\
-{\
-  if ( read_ptr == read_end )\
+#ifdef LOLS_WINDOWS
+
+  #define QUICK_GETC( ch, fp )\
+  do\
   {\
-    fread_len = fread( read_buf, sizeof(char), READ_BLOCK_SIZE, fp );\
-    if ( fread_len < READ_BLOCK_SIZE )\
-      read_buf[fread_len] = '\0';\
-    read_ptr = read_buf;\
+    ch = getc(fp);\
   }\
-  ch = *read_ptr++;\
-}\
-while(0)
+  while(0)
+
+#else
+
+  /*
+   * Quickly read char from file
+   */
+  #define QUICK_GETC( ch, fp )\
+  do\
+  {\
+    if ( read_ptr == read_end )\
+    {\
+      fread_len = fread( read_buf, sizeof(char), READ_BLOCK_SIZE, fp );\
+      if ( fread_len < READ_BLOCK_SIZE )\
+        read_buf[fread_len] = '\0';\
+      read_ptr = read_buf;\
+    }\
+    ch = *read_ptr++;\
+  }\
+  while(0)
+
+#endif
 
 /*
  * Timing macros

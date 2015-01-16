@@ -1,3 +1,5 @@
+//#define LOLS_WINDOWS
+
 #include "macro.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -8,8 +10,6 @@
 #define READ_BLOCK_SIZE 1048576  // 1024 * 1024.  For QUICK_GETC.
 #define MAX_AUTOCOMPLETE_RESULTS_PRESORT 30
 #define MAX_AUTOCOMPLETE_RESULTS_POSTSORT 10
-
-//#define LOLS_WINDOWS
 
 /*
  * Typedefs
