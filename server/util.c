@@ -2,10 +2,6 @@
 #include <limits.h>
 #include <ctype.h>
 
-#ifdef LOLS_OSX
-  #import "AppDelegate.h"
-#endif
-
 char **html_codes;
 int *html_code_lengths;
 
@@ -27,7 +23,9 @@ void error_message( char *err )
   #endif
 
   #ifdef LOLS_OSX
-    osx_poperror( [NSString stringWithCString:err] );
+    /*
+     * To do: error reporting for OS X
+     */
   #endif
 }
 
