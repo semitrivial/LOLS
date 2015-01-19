@@ -1,4 +1,7 @@
 #include "lols.h"
+
+#ifdef LOLS_UNIX_CMDLINE
+
 #include "srv.h"
 
 char *html;
@@ -775,3 +778,5 @@ void handle_ucl_syntax_request( char *request, http_request *req )
 
   return;
 }
+
+#endif

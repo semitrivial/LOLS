@@ -1,4 +1,5 @@
 //#define LOLS_WINDOWS
+#define LOLS_UNIX_CMDLINE
 
 #include "macro.h"
 #include <stdlib.h>
