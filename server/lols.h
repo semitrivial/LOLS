@@ -1,4 +1,5 @@
 //#define LOLS_WINDOWS
+//#define LOLS_OSX
 #define LOLS_UNIX_CMDLINE
 
 #include "macro.h"
@@ -109,6 +110,7 @@ char *lowercaserize( char *x );
 char *get_url_shortform( char *iri );
 char *url_decode(char *str);
 int is_number( const char *arg );
+void error_message( char *err );
 
 /*
  * ucl.c

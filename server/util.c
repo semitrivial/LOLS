@@ -2,12 +2,33 @@
 #include <limits.h>
 #include <ctype.h>
 
+#ifdef LOLS_OSX
+  #import "AppDelegate.h"
+#endif
+
 char **html_codes;
 int *html_code_lengths;
 
 void log_string( char *txt )
 {
-  printf( "%s\n", txt );
+  #ifdef LOLS_UNIX_CMDLINE
+    printf( "%s\n", txt );
+  #endif
+}
+
+void error_message( char *err )
+{
+  #ifdef LOLS_UNIX_CMDLINE
+    log_string( err );
+  #endif
+
+  #ifdef LOLS_WINDOWS
+    popup_error( err );
+  #endif
+
+  #ifdef LOLS_OSX
+    osx_poperror( [NSString stringWithCString:err] );
+  #endif
 }
 
 char *html_encode( char *str )

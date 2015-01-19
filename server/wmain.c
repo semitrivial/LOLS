@@ -70,7 +70,7 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           if ( HIWORD( wParam ) == CBN_SELCHANGE )
           {
             char combo[MAX_STRING_LEN+1];
-            
+
             ComboBox_GetText( combobox, combo, MAX_STRING_LEN );
 
             Edit_Enable( casebox, strcmp( combo, "Label from IRI" ) );

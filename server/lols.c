@@ -37,8 +37,11 @@ void parse_lols_file(FILE *fp)
 
   if ( !parse_ntriples( fp, &err, MAX_IRI_LEN, got_triple ) )
   {
-    fprintf( stderr, "Failed to parse the triples-file.\n" );
-    fprintf( stderr, "%s\n", err );
+    char *buf = malloc(strlen(err) + 1024);
+
+    sprintf( buf, "Failed to parse the triples-file:\n%s\n", err );
+
+    error_message( buf );
     abort();
   }
 }
@@ -57,7 +60,7 @@ void old_parse_lols_file(FILE *fp)
   char read_buf[READ_BLOCK_SIZE], *read_end = &read_buf[READ_BLOCK_SIZE], *read_ptr = read_end;
   int fread_len;
 
-  printf( "Parsing file...\n" );
+  log_string( "Parsing file...\n" );
 
   for(;;)
   {
@@ -97,8 +100,12 @@ void old_parse_lols_file(FILE *fp)
     {
       if ( iriptr == iri )
       {
-        fprintf( stderr, "Error on line %d of lols-file: blank IRI\n\n", linenum );
-        abort();
+        char buf[1024];
+
+        sprintf( buf, "Error on line %d of lols-file: blank IRI\n\n", linenum );
+        error_message( buf );
+
+        exit(EXIT_SUCCESS);
       }
 
       *iriptr = '\0';
@@ -113,7 +120,7 @@ void old_parse_lols_file(FILE *fp)
       *iriptr++ = c;
   }
 
-  printf( "Finished parsing file.\n" );
+  log_string( "Finished parsing file.\n" );
 
   return;
 }
