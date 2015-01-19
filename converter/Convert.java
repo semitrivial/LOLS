@@ -38,7 +38,7 @@ public class Convert
     {
       System.err.println( "Syntax: java Convert (owlfile) >(outputfile)" );
       System.err.println( "..." );
-      System.err.println( "For example: java Convert /home/ricordo/ontology/ricordo.owl >ricordo.LOLS" );
+      System.err.println( "For example: java Convert /home/ricordo/ontology/ricordo.owl >ricordo.nt" );
       return;
     }
 
@@ -68,7 +68,7 @@ public class Convert
         for ( OWLAnnotation a : annots )
         {
           if ( a.getValue() instanceof OWLLiteral )
-            System.out.print( c.toStringID() + " " + ((OWLLiteral)a.getValue()).getLiteral() + "\n" );
+            System.out.print( "<" + c.toStringID() + "> <http://www.w3.org/2000/01/rdf-schema#label> \"" + ((OWLLiteral)a.getValue()).getLiteral() + "\" .\n" );
         }
       }
     }

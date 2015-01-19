@@ -1,4 +1,5 @@
 #include "lols.h"
+#include "nt_parse.h"
 
 void init_lols(void)
 {
@@ -11,7 +12,38 @@ void init_lols(void)
   return;
 }
 
+void got_triple( char *subj, char *pred, char *obj )
+{
+  if ( !strcmp( pred, "<http://www.w3.org/2000/01/rdf-schema#label>" )
+  ||   !strcmp( pred, "<rdfs:label>" ) )
+  {
+    if ( *obj == '"' && *subj == '<' )
+    {
+      obj[strlen(obj)-1] = '\0';
+      subj[strlen(subj)-1] = '\0';
+
+      add_lols_entry( &subj[1], &obj[1] );
+    }
+  }
+
+  free( subj );
+  free( pred );
+  free( obj );
+}
+
 void parse_lols_file(FILE *fp)
+{
+  char *err = NULL;
+
+  if ( !parse_ntriples( fp, &err, MAX_IRI_LEN, got_triple ) )
+  {
+    fprintf( stderr, "Failed to parse the triples-file.\n" );
+    fprintf( stderr, "%s\n", err );
+    abort();
+  }
+}
+
+void old_parse_lols_file(FILE *fp)
 {
   char c;
   char iri[MAX_STRING_LEN], *iriptr = iri;
