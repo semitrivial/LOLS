@@ -7,6 +7,10 @@ void init_lols(void)
   label_to_iris = blank_trie();
   label_to_iris_lowercase = blank_trie();
 
+  lyph_names = blank_trie();
+  lyph_ids = blank_trie();
+  layer_ids = blank_trie();
+
   init_html_codes();
 
   return;

@@ -4,6 +4,10 @@ trie *iri_to_labels;
 trie *label_to_iris;
 trie *label_to_iris_lowercase;
 
+trie *lyph_names;
+trie *lyph_ids;
+trie *layer_ids;
+
 #ifdef LOLS_WINDOWS
 char *strndup(const char *x, int len)
 {

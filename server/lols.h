@@ -3,6 +3,7 @@
 #define LOLS_UNIX_CMDLINE
 
 #include "macro.h"
+#include "jsonfmt.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -21,6 +22,8 @@ typedef struct TRIE trie;
 typedef struct TRIE_WRAPPER trie_wrapper;
 typedef struct UCL_SYNTAX ucl_syntax;
 typedef struct AMBIG ambig;
+typedef struct LYPH lyph;
+typedef struct LAYER layer;
 
 /*
  * Structures
@@ -63,12 +66,37 @@ struct AMBIG
   char *label;
 };
 
+struct LYPH
+{
+  trie *name;
+  trie *id;
+  int type;
+  layer **layers;
+};
+
+typedef enum
+{
+  LYPH_BASIC, LYPH_SHELL, LYPH_MIX
+} lyph_types;
+
+struct LAYER
+{
+  lyph *material;
+  char *color;
+  float thickness;
+  trie *id;
+};
+
 /*
  * Global variables
  */
 extern trie *iri_to_labels;
 extern trie *label_to_iris;
 extern trie *label_to_iris_lowercase;
+
+extern trie *lyph_names;
+extern trie *lyph_ids;
+extern trie *layer_ids;
 
 /*
  * Function prototypes
@@ -122,3 +150,26 @@ void kill_ucl_syntax( ucl_syntax *s );
 int is_ambiguous( trie **data );
 void free_ambigs( ambig *head );
 char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail, char *possible_error );
+
+/*
+ * lyph.c
+ */
+lyph *lyph_by_name( char *name );
+lyph *lyph_by_id( char *id );
+char *lyph_to_json( lyph *L );
+char *layer_to_json( layer *lyr );
+layer *layer_by_id( char *id );
+layer *layer_by_description( char *mtid, float thickness, char *color );
+layer *layer_by_description_recurse( const lyph *L, const float thickness, const char *color, const trie *t );
+trie *assign_new_layer_id( layer *lyr );
+lyph *lyph_by_layers( int type, layer **layers, char *name );
+lyph *lyph_by_layers_recurse( int type, layer **layers, trie *t );
+int same_layers( layer **x, layer **y );
+layer **copy_layers( layer **src );
+int layers_len( layer **layers );
+void sort_layers( layer **layers );
+trie *assign_new_lyph_id( lyph *L );
+void free_lyphdupe_trie( trie *t );
+void save_lyphs_recurse( trie *t, FILE *fp, trie *avoid_dupes );
+char *id_as_iri( trie *id );
+void fprintf_layer( FILE *fp, layer *lyr, int bnodes, int cnt, trie *avoid_dupes );
