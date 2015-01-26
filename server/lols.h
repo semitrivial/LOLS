@@ -14,6 +14,8 @@
 #define MAX_IRI_LEN 2048
 #define MAX_AUTOCOMPLETE_RESULTS_PRESORT 30
 #define MAX_AUTOCOMPLETE_RESULTS_POSTSORT 10
+#define MAX_URL_PARAMS 32
+#define MAX_URL_PARAM_LEN 512
 
 /*
  * Typedefs
@@ -83,7 +85,7 @@ struct LAYER
 {
   lyph *material;
   char *color;
-  float thickness;
+  int thickness;
   trie *id;
 };
 
@@ -159,7 +161,7 @@ lyph *lyph_by_id( char *id );
 char *lyph_to_json( lyph *L );
 char *layer_to_json( layer *lyr );
 layer *layer_by_id( char *id );
-layer *layer_by_description( char *mtid, float thickness, char *color );
+layer *layer_by_description( char *mtid, int thickness, char *color );
 layer *layer_by_description_recurse( const lyph *L, const float thickness, const char *color, const trie *t );
 trie *assign_new_layer_id( layer *lyr );
 lyph *lyph_by_layers( int type, layer **layers, char *name );
@@ -173,3 +175,4 @@ void free_lyphdupe_trie( trie *t );
 void save_lyphs_recurse( trie *t, FILE *fp, trie *avoid_dupes );
 char *id_as_iri( trie *id );
 void fprintf_layer( FILE *fp, layer *lyr, int bnodes, int cnt, trie *avoid_dupes );
+int parse_lyph_type( char *str );

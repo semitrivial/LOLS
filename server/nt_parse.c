@@ -3,15 +3,28 @@
 
 int parse_ntriples( FILE *fp, char **err, int max_iri_len, ADD_TRIPLE_FUNCTION *fnc )
 {
-  char c, *buf = malloc(max_iri_len+1), *end = &buf[max_iri_len], *bptr = buf;
+  char c, *end, *bptr;
   char *subj, *pred, *obj;
   int line = 1, fQuote = 0, fBrace = 0, fUnderscore = 0, fSubj = 0, fPred = 0, fObj = 0, fresh_line = 1, whitespaceable = 1, fAnything = 0;
+  static char *buf;
+  static int bufsize;
 
   #ifndef WIN32
     // Variables for QUICK_GETC
     char read_buf[READ_BLOCK_SIZE], *read_end = &read_buf[READ_BLOCK_SIZE], *read_ptr = read_end;
     int fread_len;
   #endif
+
+  if ( bufsize < max_iri_len + 1 )
+  {
+    if ( buf )
+      free( buf );
+
+    buf = malloc( max_iri_len + 1 );
+    bufsize = max_iri_len + 1;
+  }
+  bptr = buf;
+  end = &buf[max_iri_len];
 
   if ( !fnc )
     fnc = do_nothing_function;
@@ -255,3 +268,4 @@ void do_nothing_function( char *subj, char *pred, char *obj )
 
   return;
 }
+

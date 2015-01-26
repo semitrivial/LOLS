@@ -41,6 +41,7 @@
  */
 typedef struct HTTP_REQUEST http_request;
 typedef struct HTTP_CONN http_conn;
+typedef struct URL_PARAM url_param;
 
 struct HTTP_REQUEST
 {
@@ -67,6 +68,12 @@ struct HTTP_CONN
   int outbuflen;
   int len;
   char *writehead;
+};
+
+struct URL_PARAM
+{
+  char *key;
+  char *val;
 };
 
 /*
@@ -106,5 +113,11 @@ char *current_date(void);
 void send_gui( http_request *req );
 void send_js( http_request *req );
 char *load_file( char *filename );
-void parse_params( char *buf, int *fShortIRI, int *fCaseInsens );
+const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, url_param **params );
 void handle_ucl_syntax_request( char *request, http_request *req );
+void handle_makelayer_request( char *request, http_request *req, url_param **params );
+void handle_makelyph_request( char *request, http_request *req, url_param **params );
+void handle_lyph_request( char *request, http_request *req );
+void handle_layer_request( char *request, http_request *req );
+void free_url_params( url_param **buf );
+char *get_url_param( url_param **params, char *key );

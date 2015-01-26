@@ -59,6 +59,8 @@ void save_lyphs_recurse( trie *t, FILE *fp, trie *avoid_dupes )
       for ( lyrs = L->layers; *lyrs; lyrs++ )
         fprintf_layer( fp, *lyrs, bnodes, cnt++, avoid_dupes );
     }
+
+    free( id );
   }
 
   if ( t->children )
@@ -80,7 +82,10 @@ void fprintf_layer( FILE *fp, layer *lyr, int bnodes, int cnt, trie *avoid_dupes
   dupe_search = trie_search( lid, avoid_dupes );
 
   if ( dupe_search && dupe_search->data )
+  {
+    free( lid );
     return;
+  }
 
   trie_strdup( lid, avoid_dupes );
 
@@ -93,7 +98,9 @@ void fprintf_layer( FILE *fp, layer *lyr, int bnodes, int cnt, trie *avoid_dupes
   }
 
   if ( lyr->thickness != -1 )
-    fprintf( fp, "%s <http://open-physiology.org/lyph#has_thickness> \"%f\" .\n", lid, lyr->thickness );
+    fprintf( fp, "%s <http://open-physiology.org/lyph#has_thickness> \"%d\" .\n", lid, lyr->thickness );
+
+  free( lid );
 }
 
 char *id_as_iri( trie *id )
@@ -177,7 +184,7 @@ int same_layers( layer **x, layer **y )
   }
 }
 
-layer *layer_by_description( char *mtid, float thickness, char *color )
+layer *layer_by_description( char *mtid, int thickness, char *color )
 {
   lyph *L = lyph_by_id( mtid );
   layer *lyr;
@@ -237,19 +244,30 @@ trie *assign_new_layer_id( layer *lyr )
   return t;
 }
 
+int layer_matches( layer *candidate, const lyph *material, const float thickness, const char *color )
+{
+  if ( candidate->material != material )
+    return 0;
+
+  if ( thickness != -1 && thickness != candidate->thickness )
+    return 0;
+
+  if ( color )
+  {
+    if ( !candidate->color )
+      return 0;
+
+    if ( strcmp( color, candidate->color ) )
+      return 0;
+  }
+
+  return 1;
+}
+
 layer *layer_by_description_recurse( const lyph *L, const float thickness, const char *color, const trie *t )
 {
-  if ( t->data )
-  {
-    layer *lyr = (layer *)t->data;
-
-    if ( lyr->material == L )
-    {
-      if ( ( thickness == -1 || thickness == lyr->thickness )
-      &&   ( !color || !strcmp( color, lyr->color ) ) )
-        return lyr;
-    }
-  }
+  if ( t->data && layer_matches( (layer *)t->data, L, thickness, color ) )
+      return (layer *)t->data;
 
   if ( t->children )
   {
@@ -470,9 +488,15 @@ int layers_len( layer **layers )
  */
 int cmp_layers(const void * a, const void * b)
 {
-  const layer *x = (const layer *) a;
-  const layer *y = (const layer *) b;
+  const layer *x;
+  const layer *y;
   char buf[MAX_STRING_LEN+1];
+
+  if ( a == b )
+    return 0;
+
+  x = *((const layer **) a);
+  y = *((const layer **) b);
 
   sprintf( buf, "%s", trie_to_static( x->id ) );
 
@@ -502,4 +526,18 @@ void free_lyphdupe_trie( trie *t )
     free( t->label );
 
   free( t );
+}
+
+int parse_lyph_type( char *str )
+{
+  if ( !strcmp( str, "mix" ) )
+    return LYPH_MIX;
+
+  if ( !strcmp( str, "shell" ) )
+    return LYPH_SHELL;
+
+  if ( !strcmp( str, "basic" ) )
+    return LYPH_BASIC;
+
+  return -1;
 }

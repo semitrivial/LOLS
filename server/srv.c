@@ -104,6 +104,8 @@ void init_lols_http_server( int port )
     abort();
   }
 
+  freeaddrinfo( servinfo );
+
   return;
 }
 
@@ -119,8 +121,10 @@ void main_loop( void )
     if ( req )
     {
       char *reqptr, *reqtype, *request, repl[MAX_STRING_LEN], *rptr;
+      const char *parse_params_err;
       trie **data;
       int len=0, fFirst=0, fShortIRI=0, fCaseInsens=0;
+      url_param *params[MAX_URL_PARAMS+1];
 
       count++;
 
@@ -153,16 +157,60 @@ void main_loop( void )
       *reqptr = '\0';
       reqtype = (*req->query == '/') ? req->query + 1 : req->query;
 
-      parse_params( &reqptr[1], &fShortIRI, &fCaseInsens );
+      parse_params_err = parse_params( &reqptr[1], &fShortIRI, &fCaseInsens, params );
+
+      if ( parse_params_err )
+      {
+        char errmsg[1024];
+
+        sprintf( errmsg, "{\"Error\": \"%s\"}", parse_params_err );
+
+        send_200_response( req, errmsg );
+        free_url_params( params );
+        continue;
+      }
 
       request = url_decode(&reqptr[1]);
+
+      if ( !strcmp( reqtype, "makelyph" ) )
+      {
+        handle_makelyph_request( request, req, params );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
+      if ( !strcmp( reqtype, "makelayer" ) )
+      {
+        handle_makelayer_request( request, req, params );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
+      free_url_params( params );
 
       if ( !strcmp( reqtype, "uclsyntax" )
       ||   !strcmp( reqtype, "ucl_syntax" )
       ||   !strcmp( reqtype, "ucl-syntax" ) )
       {
         handle_ucl_syntax_request( request, req );
-        return;
+        free( request );
+        continue;
+      }
+
+      if ( !strcmp( reqtype, "lyph" ) )
+      {
+        handle_lyph_request( request, req );
+        free( request );
+        continue;
+      }
+
+      if ( !strcmp( reqtype, "layer" ) )
+      {
+        handle_layer_request( request, req );
+        free( request );
+        continue;
       }
 
       if ( !strcmp( reqtype, "iri" ) )
@@ -684,18 +732,22 @@ char *load_file( char *filename )
   }
 }
 
-void parse_params( char *buf, int *fShortIRI, int *fCaseInsens )
+const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, url_param **params )
 {
   char *bptr;
   char *param;
-  int fEnd;
+  int fEnd, cnt=0;
+  url_param **pptr = params;
 
   for ( bptr = buf; *bptr; bptr++ )
     if ( *bptr == '?' )
       break;
 
   if ( !*bptr )
-    return;
+  {
+    *params = NULL;
+    return NULL;
+  }
 
   *bptr++ = '\0';
   param = bptr;
@@ -710,6 +762,12 @@ void parse_params( char *buf, int *fShortIRI, int *fCaseInsens )
       else
         *bptr = '\0';
 
+      if ( ++cnt >= MAX_URL_PARAMS )
+      {
+        *pptr = NULL;
+        return "Too many URL parameters";
+      }
+
       if ( !strcmp( param, "case-insensitive" )
       ||   !strcmp( param, "case-ins" )
       ||   !strcmp( param, "insensitive" )
@@ -719,15 +777,209 @@ void parse_params( char *buf, int *fShortIRI, int *fCaseInsens )
       if ( !strcmp( param, "short-iri" )
       ||   !strcmp( param, "short" ) )
         *fShortIRI = 1;
+      else
+      {
+        char *equals;
+
+        for ( equals = param; *equals; equals++ )
+          if ( *equals == '=' )
+            break;
+
+        if ( *equals )
+        {
+          *equals = '\0';
+
+          if ( strlen( param ) >= MAX_URL_PARAM_LEN )
+          {
+            *pptr = NULL;
+            return "Url parameter too long";
+          }
+
+          CREATE( *pptr, url_param, 1 );
+          (*pptr)->key = strdup( param );
+          (*pptr)->val = strdup( &equals[1] );
+          pptr++;
+        }
+      }
 
       if ( fEnd )
-        return;
+      {
+        *pptr = NULL;
+        return NULL;
+      }
 
       param = &bptr[1];
     }
 
     bptr++;
   }
+}
+
+void handle_makelayer_request( char *request, http_request *req, url_param **params )
+{
+  char *mtid, *color, *thickstr, *json;
+  int thickness;
+  layer *lyr;
+
+  mtid = get_url_param( params, "material" );
+
+  if ( !mtid )
+  {
+    send_200_response( req, "{\"Error\": \"No material specified for layer\"}" );
+    return;
+  }
+
+  color = get_url_param( params, "color" );
+
+  thickstr = get_url_param( params, "thickness" );
+
+  if ( thickstr )
+    thickness = strtol( thickstr, NULL, 10 );
+  else
+    thickness = -1;
+
+  lyr = layer_by_description( mtid, thickness, color );
+
+  if ( !lyr )
+  {
+    send_200_response( req, "{\"Error\": \"Invalid material id specified for layer\"}" );
+    return;
+  }
+
+  json = layer_to_json( lyr );
+
+  send_200_response( req, json );
+
+  free( json );
+}
+
+void handle_makelyph_request( char *request, http_request *req, url_param **params )
+{
+  char *name, *typestr, *json;
+  int type, lcnt;
+  static layer **lyrs;
+  layer **lptr;
+  lyph *L;
+
+  if ( !lyrs )
+    CREATE( lyrs, layer *, MAX_URL_PARAMS + 2 );
+
+  name = get_url_param( params, "name" );
+
+  if ( !name )
+  {
+    send_200_response( req, "{\"Error\": \"No name specified for lyph\"}" );
+    return;
+  }
+
+  typestr = get_url_param( params, "type" );
+
+  if ( !typestr )
+  {
+    send_200_response( req, "{\"Error\": \"No type specified for lyph\"}" );
+    return;
+  }
+
+  type = parse_lyph_type( typestr );
+
+  if ( type == -1 )
+  {
+    send_200_response( req, "{\"Error\": \"Invalid type specified for lyph\"}" );
+    return;
+  }
+
+  if ( type == LYPH_BASIC )
+  {
+    send_200_response( req, "{\"Error\": \"Only lyph types 'mix' and 'shell' are created by makelyph\"}" );
+    return;
+  }
+
+  lcnt = 1;
+  lptr = lyrs;
+
+  for(;;)
+  {
+    char pmname[MAX_URL_PARAM_LEN+128];
+    char *lyrid;
+    layer *lyr;
+
+    sprintf( pmname, "layer%d", lcnt );
+
+    lyrid = get_url_param( params, pmname );
+
+    if ( !lyrid )
+      break;
+
+    lyr = layer_by_id( lyrid );
+
+    if ( !lyr )
+    {
+      char *errmsg = malloc( strlen(lyrid) + 256 );
+
+      sprintf( errmsg, "{\"Error\": \"No layer with id '%s'\"}", lyrid );
+      send_200_response( req, errmsg );
+
+      free( errmsg );
+      return;
+    }
+
+    *lptr++ = lyr;
+    lcnt++;
+  }
+
+  *lptr = NULL;
+
+  L = lyph_by_layers( type, lyrs, name );
+
+  if ( !L )
+  {
+    send_200_response( req, "{\"Error\": \"Could not create the desired lyph\"}" );
+    return;
+  }
+
+  json = lyph_to_json( L );
+
+  send_200_response( req, json );
+
+  free( json );
+}
+
+void handle_lyph_request( char *request, http_request *req )
+{
+  lyph *L;
+  char *json;
+
+  L = lyph_by_id( request );
+
+  if ( !L )
+  {
+    send_200_response( req, "{\"Error\": \"No lyph with that id\"}" );
+    return;
+  }
+
+  json = lyph_to_json( L );
+
+  send_200_response( req, json );
+
+  free( json );
+}
+
+void handle_layer_request( char *request, http_request *req )
+{
+  layer *lyr = layer_by_id( request );
+  char *json;
+
+  if ( !lyr )
+  {
+    send_200_response( req, "{\"Error\": \"No layer by that id\"}" );
+    return;
+  }
+
+  json = layer_to_json( lyr );
+
+  send_200_response( req, json );
+
+  free( json );
 }
 
 void handle_ucl_syntax_request( char *request, http_request *req )
@@ -777,6 +1029,29 @@ void handle_ucl_syntax_request( char *request, http_request *req )
     free( maybe_err );
 
   return;
+}
+
+void free_url_params( url_param **buf )
+{
+  url_param **ptr;
+
+  for ( ptr = buf; *ptr; ptr++ )
+  {
+    free( (*ptr)->key );
+    free( (*ptr)->val );
+    free( *ptr );
+  }
+}
+
+char *get_url_param( url_param **params, char *key )
+{
+  url_param **ptr;
+
+  for ( ptr = params; *ptr; ptr++ )
+    if ( !strcmp( (*ptr)->key, key ) )
+      return (*ptr)->val;
+
+  return NULL;
 }
 
 #endif
