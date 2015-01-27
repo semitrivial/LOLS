@@ -2,6 +2,8 @@
 //#define LOLS_OSX
 #define LOLS_UNIX_CMDLINE
 
+#define ENABLE_LYPHS
+
 #include "macro.h"
 #include "jsonfmt.h"
 #include <stdlib.h>
@@ -26,6 +28,8 @@ typedef struct UCL_SYNTAX ucl_syntax;
 typedef struct AMBIG ambig;
 typedef struct LYPH lyph;
 typedef struct LAYER layer;
+typedef struct LAYER_LOADING layer_loading;
+typedef struct LOAD_LAYERS_DATA load_layers_data;
 
 /*
  * Structures
@@ -78,7 +82,7 @@ struct LYPH
 
 typedef enum
 {
-  LYPH_BASIC, LYPH_SHELL, LYPH_MIX
+  LYPH_BASIC, LYPH_SHELL, LYPH_MIX, LYPH_MISSING
 } lyph_types;
 
 struct LAYER
@@ -87,6 +91,21 @@ struct LAYER
   char *color;
   int thickness;
   trie *id;
+};
+
+struct LOAD_LAYERS_DATA
+{
+  lyph *subj;
+  layer_loading *first_layer_loading;
+  layer_loading *last_layer_loading;
+  int layer_count;
+};
+
+struct LAYER_LOADING
+{
+  layer_loading *next;
+  layer_loading *prev;
+  layer *lyr;
 };
 
 /*
@@ -175,4 +194,11 @@ void free_lyphdupe_trie( trie *t );
 void save_lyphs_recurse( trie *t, FILE *fp, trie *avoid_dupes );
 char *id_as_iri( trie *id );
 void fprintf_layer( FILE *fp, layer *lyr, int bnodes, int cnt, trie *avoid_dupes );
+void load_lyphs( void );
 int parse_lyph_type( char *str );
+void load_lyph_label( char *subj_full, char *label );
+void load_lyph_type( char *subj_full, char *type_str );
+void acknowledge_has_layers( char *subj_full, char *bnode_id, trie *bnodes );
+void load_layer_color( char *subj_full, char *obj_full );
+void load_layer_to_lld( char *bnode, char *obj_full, trie *bnodes );
+void load_layer_thickness( char *subj_full, char *obj );

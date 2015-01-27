@@ -1,3 +1,4 @@
+#include <sys/socket.h>
 #include <netdb.h>
 #include <ctype.h>
 #include <errno.h>
@@ -117,8 +118,8 @@ void send_lyphjs( http_request *req );
 char *load_file( char *filename );
 const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, url_param **params );
 void handle_ucl_syntax_request( char *request, http_request *req );
-void handle_makelayer_request( char *request, http_request *req, url_param **params );
-void handle_makelyph_request( char *request, http_request *req, url_param **params );
+void handle_makelayer_request( http_request *req, url_param **params );
+void handle_makelyph_request( http_request *req, url_param **params );
 void handle_lyph_request( char *request, http_request *req );
 void handle_layer_request( char *request, http_request *req );
 void free_url_params( url_param **buf );

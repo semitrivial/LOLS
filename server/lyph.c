@@ -1,8 +1,199 @@
 #include "lols.h"
+#include "nt_parse.h"
 
 char *lyph_type_as_char( lyph *L );
 int top_layer_id;
 int top_lyph_id;
+
+void got_lyph_triple( char *subj, char *pred, char *obj )
+{
+  char *s = subj, *p = pred, *o = obj;
+  trie *bnodes = blank_trie();
+
+  if ( (*subj == '"' || *subj == '<') && s++ )
+    subj[strlen(subj)-1] = '\0';
+
+  if ( (*pred == '"' || *pred == '<') && p++ )
+    pred[strlen(pred)-1] = '\0';
+
+  if ( (*obj == '"' || *obj == '<') && o++ )
+    obj[strlen(obj)-1] = '\0';
+
+  if ( !strcmp( p, "http://www.w3.org/2000/01/rdf-schema#label" ) )
+    load_lyph_label( s, o );
+  else if ( !strcmp( p, "http://open-physiology.org/lyph#lyph_type" ) )
+    load_lyph_type( s, o );
+  else if ( !strcmp( p, "http://open-physiology.org/lyph#has_layers" ) )
+    acknowledge_has_layers( s, o, bnodes );
+  else if ( str_begins( p, "http://www.w3.org/1999/02/22-rdf-syntax-ns#_" ) )
+    load_layer_to_lld( s, o, bnodes );
+  else if ( !strcmp( p, "http://open-physiology.org/lyph#has_color" ) )
+    load_layer_color( s, o );
+  else if ( !strcmp( p, "http://open-physiology.org/lyph#has_thickness" ) )
+    load_layer_thickness( s, o );
+
+  free( subj );
+  free( pred );
+  free( obj );
+}
+
+void load_lyph_type( char *subj_full, char *type_str )
+{
+  char *subj = get_url_shortform( subj_full );
+  int type = parse_lyph_type( type_str );
+  trie *iri;
+
+  if ( type != -1 )
+    iri = trie_search( subj, lyph_ids );
+
+  if ( type == -1 || !iri )
+    return;
+
+  ((lyph *)iri->data)->type = type;
+}
+
+void load_lyph_label( char *subj_full, char *label )
+{
+  char *subj = get_url_shortform( subj_full );
+  trie *iri;
+printf( "Got label for: %s\n", subj );
+  if ( !str_begins( subj, "LAYER_" ) )
+  {
+    lyph *L;
+
+    iri = trie_strdup( subj, lyph_ids );
+
+    if ( !iri->data )
+    {
+      CREATE( L, lyph, 1 );
+      L->id = iri;
+      L->type = LYPH_MISSING;
+      L->layers = NULL;
+      iri->data = (void *)L;
+printf("Lyph created: %s\n", subj );
+    }
+    else
+      L = (lyph *)iri->data;
+
+    L->name = trie_strdup( label, lyph_names );
+    L->name->data = (void *)L;
+  }
+}
+
+void acknowledge_has_layers( char *subj_full, char *bnode_id, trie *bnodes )
+{
+  char *subj = get_url_shortform( subj_full );
+  trie *iri = trie_search( subj, lyph_ids );
+  trie *bnode;
+  load_layers_data *lld;
+
+  if ( !iri || !iri->data )
+    return;
+
+  bnode = trie_strdup( bnode_id, bnodes );
+
+  CREATE( lld, load_layers_data, 1 );
+  lld->subj = (lyph *)iri->data;
+  lld->first_layer_loading = NULL;
+  lld->last_layer_loading = NULL;
+  lld->layer_count = 0;
+
+  bnode->data = (trie **)lld;
+}
+
+void load_layer_to_lld( char *bnode, char *obj_full, trie *bnodes )
+{
+  load_layers_data *lld;
+  trie *lyr_trie;
+  layer *lyr;
+  char *obj;
+  layer_loading *loading;
+  trie *t = trie_search( bnode, bnodes );
+
+  if ( !t || !t->data )
+    return;
+
+  obj = get_url_shortform( obj_full );
+
+  lyr_trie = trie_search( obj, layer_ids );
+
+  if ( lyr_trie )
+    lyr = (layer *)lyr_trie->data;
+  else
+  {
+    CREATE( lyr, layer, 1 );
+    lyr->id = trie_strdup( obj, layer_ids );
+    lyr->id->data = (trie **)lyr;
+    lyr->color = NULL;
+    lyr->thickness = -1;
+  }
+
+  CREATE( loading, layer_loading, 1 );
+  loading->lyr = lyr;
+
+  lld = (load_layers_data *)t->data;
+
+  LINK( loading, lld->first_layer_loading, lld->last_layer_loading, next );
+  lld->layer_count++;
+}
+
+void load_layer_color( char *subj_full, char *obj_full )
+{
+  char *subj = get_url_shortform( subj_full );
+  trie *t;
+  layer *lyr;
+
+  t = trie_search( subj, layer_ids );
+
+  if ( !t || !t->data )
+    return;
+
+  lyr = (layer *)t->data;
+
+  if ( lyr->color )
+    free( lyr->color );
+
+  lyr->color = strdup( obj_full );
+}
+
+void load_layer_thickness( char *subj_full, char *obj )
+{
+  char *subj = get_url_shortform( subj_full );
+  trie *t = trie_search( subj, layer_ids );
+  layer *lyr;
+
+  if ( !t || !t->data )
+    return;
+
+  lyr = (layer *)t->data;
+
+  lyr->thickness = strtol( obj, NULL, 10 );
+}
+
+void load_lyphs(void)
+{
+  FILE *fp;
+  char *err = NULL;
+printf("debug1");
+  fp = fopen( "lyphs.dat", "r" );
+
+  if ( !fp )
+  {
+    log_string( "Could not open lyphs.dat for reading" );
+    return;
+  }
+
+  if ( !parse_ntriples( fp, &err, MAX_IRI_LEN, got_lyph_triple ) )
+  {
+    char *buf = malloc(strlen(err) + 1024);
+
+    sprintf( buf, "Failed to parse the lyphs-file (lyphs.dat):\n%s\n", err ? err : "(no error given)" );
+
+    error_message( buf );
+    abort();
+  }
+printf("debug2");
+}
 
 void save_lyphs(void)
 {

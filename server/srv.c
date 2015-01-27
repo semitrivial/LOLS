@@ -195,7 +195,7 @@ void main_loop( void )
 
       if ( !strcmp( reqtype, "makelyph" ) )
       {
-        handle_makelyph_request( request, req, params );
+        handle_makelyph_request( req, params );
         free( request );
         free_url_params( params );
         continue;
@@ -203,7 +203,7 @@ void main_loop( void )
 
       if ( !strcmp( reqtype, "makelayer" ) )
       {
-        handle_makelayer_request( request, req, params );
+        handle_makelayer_request( req, params );
         free( request );
         free_url_params( params );
         continue;
@@ -846,7 +846,7 @@ const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, url_param
   }
 }
 
-void handle_makelayer_request( char *request, http_request *req, url_param **params )
+void handle_makelayer_request( http_request *req, url_param **params )
 {
   char *mtid, *color, *thickstr, *json;
   int thickness;
@@ -884,7 +884,7 @@ void handle_makelayer_request( char *request, http_request *req, url_param **par
   free( json );
 }
 
-void handle_makelyph_request( char *request, http_request *req, url_param **params )
+void handle_makelyph_request( http_request *req, url_param **params )
 {
   char *name, *typestr, *json;
   int type, lcnt;

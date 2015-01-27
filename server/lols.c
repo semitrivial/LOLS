@@ -13,6 +13,10 @@ void init_lols(void)
 
   init_html_codes();
 
+#ifdef ENABLE_LYPHS
+  load_lyphs();
+#endif
+
   return;
 }
 
