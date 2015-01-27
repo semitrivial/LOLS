@@ -4,11 +4,11 @@
 char *lyph_type_as_char( lyph *L );
 int top_layer_id;
 int top_lyph_id;
+trie *blank_nodes;
 
 void got_lyph_triple( char *subj, char *pred, char *obj )
 {
   char *s = subj, *p = pred, *o = obj;
-  trie *bnodes = blank_trie();
 
   if ( (*subj == '"' || *subj == '<') && s++ )
     subj[strlen(subj)-1] = '\0';
@@ -24,9 +24,9 @@ void got_lyph_triple( char *subj, char *pred, char *obj )
   else if ( !strcmp( p, "http://open-physiology.org/lyph#lyph_type" ) )
     load_lyph_type( s, o );
   else if ( !strcmp( p, "http://open-physiology.org/lyph#has_layers" ) )
-    acknowledge_has_layers( s, o, bnodes );
+    acknowledge_has_layers( s, o );
   else if ( str_begins( p, "http://www.w3.org/1999/02/22-rdf-syntax-ns#_" ) )
-    load_layer_to_lld( s, o, bnodes );
+    load_layer_to_lld( s, o );
   else if ( !strcmp( p, "http://open-physiology.org/lyph#has_color" ) )
     load_layer_color( s, o );
   else if ( !strcmp( p, "http://open-physiology.org/lyph#has_thickness" ) )
@@ -56,7 +56,7 @@ void load_lyph_label( char *subj_full, char *label )
 {
   char *subj = get_url_shortform( subj_full );
   trie *iri;
-printf( "Got label for: %s\n", subj );
+
   if ( !str_begins( subj, "LAYER_" ) )
   {
     lyph *L;
@@ -70,7 +70,6 @@ printf( "Got label for: %s\n", subj );
       L->type = LYPH_MISSING;
       L->layers = NULL;
       iri->data = (void *)L;
-printf("Lyph created: %s\n", subj );
     }
     else
       L = (lyph *)iri->data;
@@ -80,7 +79,7 @@ printf("Lyph created: %s\n", subj );
   }
 }
 
-void acknowledge_has_layers( char *subj_full, char *bnode_id, trie *bnodes )
+void acknowledge_has_layers( char *subj_full, char *bnode_id )
 {
   char *subj = get_url_shortform( subj_full );
   trie *iri = trie_search( subj, lyph_ids );
@@ -90,7 +89,7 @@ void acknowledge_has_layers( char *subj_full, char *bnode_id, trie *bnodes )
   if ( !iri || !iri->data )
     return;
 
-  bnode = trie_strdup( bnode_id, bnodes );
+  bnode = trie_strdup( bnode_id, blank_nodes );
 
   CREATE( lld, load_layers_data, 1 );
   lld->subj = (lyph *)iri->data;
@@ -101,14 +100,14 @@ void acknowledge_has_layers( char *subj_full, char *bnode_id, trie *bnodes )
   bnode->data = (trie **)lld;
 }
 
-void load_layer_to_lld( char *bnode, char *obj_full, trie *bnodes )
+void load_layer_to_lld( char *bnode, char *obj_full )
 {
   load_layers_data *lld;
   trie *lyr_trie;
   layer *lyr;
   char *obj;
   layer_loading *loading;
-  trie *t = trie_search( bnode, bnodes );
+  trie *t = trie_search( bnode, blank_nodes );
 
   if ( !t || !t->data )
     return;
@@ -174,7 +173,8 @@ void load_lyphs(void)
 {
   FILE *fp;
   char *err = NULL;
-printf("debug1");
+  lyph *naked;
+
   fp = fopen( "lyphs.dat", "r" );
 
   if ( !fp )
@@ -182,6 +182,8 @@ printf("debug1");
     log_string( "Could not open lyphs.dat for reading" );
     return;
   }
+
+  blank_nodes = blank_trie();
 
   if ( !parse_ntriples( fp, &err, MAX_IRI_LEN, got_lyph_triple ) )
   {
@@ -192,7 +194,82 @@ printf("debug1");
     error_message( buf );
     abort();
   }
-printf("debug2");
+
+  handle_loaded_layers( blank_nodes );
+
+  if ( (naked=missing_layers( lyph_ids )) != NULL )
+  {
+    char buf[1024 + MAX_IRI_LEN];
+
+    sprintf( buf, "Error in lyphs.dat: lyph %s has type %s but has no layers\n", trie_to_static( naked->id ), lyph_type_as_char( naked ) );
+    error_message( buf );
+    abort();
+  }
+}
+
+lyph *missing_layers( trie *t )
+{
+  if ( t->data )
+  {
+    lyph *L = (lyph *)t->data;
+
+    if ( ( L->type == LYPH_MIX || L->type == LYPH_SHELL ) && ( !L->layers || !L->layers[0] ) )
+      return L;
+  }
+
+  if ( t->children )
+  {
+    trie **child;
+
+    for ( child = t->children; *child; child++ )
+    {
+      lyph *L = missing_layers( *child );
+
+      if ( L )
+        return L;
+    }
+  }
+
+  return NULL;
+}
+
+void handle_loaded_layers( trie *t )
+{
+  if ( t->data )
+  {
+    load_layers_data *lld = (load_layers_data *)t->data;
+    layer_loading *load, *load_next;
+    lyph *L = lld->subj;
+    layer **lyrs, **lptr;
+
+    CREATE( lyrs, layer *, lld->layer_count + 1 );
+    lptr = lyrs;
+
+    for ( load = lld->first_layer_loading; load; load = load_next )
+    {
+      load_next = load->next;
+      *lptr++ = load->lyr;
+      free( load );
+    }
+
+    *lptr = NULL;
+    L->layers = lyrs;
+  }
+
+  if ( t->children )
+  {
+    trie **child;
+
+    for ( child = t->children; *child; child++ )
+      handle_loaded_layers( *child );
+
+    free( t->children );
+  }
+
+  if ( t->label )
+    free( t->label );
+
+  free( t );
 }
 
 void save_lyphs(void)
@@ -224,7 +301,10 @@ void save_lyphs_recurse( trie *t, FILE *fp, trie *avoid_dupes )
   /*
    * Save in N-Triples format for improved interoperability
    */
-  int bnodes = 0;
+  static int bnodes;
+
+  if ( t == lyph_ids )
+    bnodes = 0;
 
   if ( t->data )
   {

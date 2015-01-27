@@ -165,6 +165,7 @@ void error_message( char *err );
  * ucl.c
  */
 ucl_syntax *parse_ucl_syntax( char *ucl, char **err, char **maybe_err, ambig **ambig_head, ambig **ambig_tail );
+int str_approx( char *full, char *init );
 int str_begins( char *full, char *init );
 char *read_some_relation( char *left, char *right );
 void kill_ucl_syntax( ucl_syntax *s );
@@ -198,7 +199,9 @@ void load_lyphs( void );
 int parse_lyph_type( char *str );
 void load_lyph_label( char *subj_full, char *label );
 void load_lyph_type( char *subj_full, char *type_str );
-void acknowledge_has_layers( char *subj_full, char *bnode_id, trie *bnodes );
+void acknowledge_has_layers( char *subj_full, char *bnode_id );
 void load_layer_color( char *subj_full, char *obj_full );
-void load_layer_to_lld( char *bnode, char *obj_full, trie *bnodes );
+void load_layer_to_lld( char *bnode, char *obj_full );
 void load_layer_thickness( char *subj_full, char *obj );
+lyph *missing_layers( trie *t );
+void handle_loaded_layers( trie *t );

@@ -48,7 +48,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, char **maybe_err, ambig **a
     return s;
   }
 
-  if ( str_begins( ucl, "not" ) )
+  if ( str_approx( ucl, "not" ) )
   {
     CREATE( s, ucl_syntax, 1 );
     s->type = UCL_SYNTAX_NOT;
@@ -109,7 +109,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, char **maybe_err, ambig **a
         if ( ptr == ucl )
           break;
 
-        if ( *ptr == 's' && str_begins( ptr, "some" ) )
+        if ( *ptr == 's' && str_approx( ptr, "some" ) )
         {
           if ( ptr == ucl )
           {
@@ -135,8 +135,8 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, char **maybe_err, ambig **a
           return s;
         }
 
-        if ( ( *ptr == 'a' && str_begins( ptr, "and" ) )
-        ||   ( *ptr == 'o' && str_begins( ptr, "or" ) ) )
+        if ( ( *ptr == 'a' && str_approx( ptr, "and" ) )
+        ||   ( *ptr == 'o' && str_approx( ptr, "or" ) ) )
         {
           if ( ptr == ucl )
             return NULL;
@@ -236,7 +236,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, char **maybe_err, ambig **a
   return s;
 }
 
-int str_begins( char *full, char *init )
+int str_approx( char *full, char *init )
 {
   char *fptr = full, *iptr = init;
 
@@ -250,6 +250,29 @@ int str_begins( char *full, char *init )
 
     if ( !*iptr )
       return ( !*fptr || (*fptr==' ') || (*fptr=='(') );
+
+    if ( LOWER( *fptr ) != LOWER( *iptr ) )
+      return 0;
+
+    fptr++;
+    iptr++;
+  }
+}
+
+int str_begins( char *full, char *init )
+{
+  char *fptr = full, *iptr = init;
+
+  for (;;)
+  {
+    if ( !*fptr && !*iptr )
+      return 1;
+
+    if ( !*fptr )
+      return 0;
+
+    if ( !*iptr )
+      return 1;
 
     if ( LOWER( *fptr ) != LOWER( *iptr ) )
       return 0;
