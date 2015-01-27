@@ -1,0 +1,74 @@
+<html>
+  <head>
+    <title>Lyph Editor (Draft)</title>
+
+    <link rel='stylesheet' href='//open-physiology.org/Skeleton/stylesheets/base.css'>
+    <link rel='stylesheet' href='//open-physiology.org/Skeleton/stylesheets/skeleton.css'>
+
+    <meta charset='utf-8'>
+    <meta name='author' content='The Farr Institute'>
+    <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1'>
+    <meta name='description' content='Lyph Editor (Draft)'>
+
+    <!--[if lt IE 9]>
+      <script type='text/javascript' src='http://html5shim.googlecode.com/svn/trunk/html5.js'></script>
+    <![endif]-->
+
+    <script type='text/javascript' src='/lyphjs/'></script>
+
+  </head>
+
+  <body>
+    <div class='container'>
+
+      <div class='sixteen columns'>
+        <h1>Lyph Editor (Draft)</h1>
+        <hr>
+      </div>
+
+      <div class='ten columns'>
+        <h2>Layers Viewer/Editor</h2>
+        <hr>
+
+        <div id='lyph_id'>
+          Lyph ID: N/A ("Create Lyph" to assign ID)
+        </div>
+
+        <div id='layer_controls'>
+          <input id='layer_material' placeholder='Material' onKeyUp="inputkey(event,'layer_adder');" style='width:100%'>
+          <input id='thickness' placeholder='Thickness (optional)' onKeyUp="inputkey(event,'layer_adder');" style='width:100%'>
+          <input id='color' placeholder='Color (optional)' onKeyUp="inputkey(event,'layer_adder');" style='width:100%'>
+          <button onclick="inputkey(13,'layer_adder');" style="width:100%">Add Layer</button>
+        </div>
+
+        <div id='layers'>
+          <ul id='layers_list'>
+          </ul>
+        </div>
+
+        <div id='lyphmaker_controls'>
+          <input id='lyphname' placeholder='Proposed name for new lyph' style='width:100%'>
+          <input id='lyphtype' placeholder='Lyph type (either MIX or SHELL)' style='width:100%'>
+          <button onclick="inputkey(13,'lyph_adder');" style="width:100%">Create Lyph</button>
+          <button onclick="clear_display();" style="width:100%">Restart</button>
+          <input type='hidden' style='display:none' id='display_lyph_by_id'>
+        </div>
+
+      </div>
+
+      <div class='six columns'>
+        <h2>Materials Palette</h2>
+        <hr>
+
+        <div id='palette_controls'>
+          <input id='material_lookup' placeholder='Lyph ID or Ontology IRI' onKeyUp="inputkey(event,'material_lookup');" style='width:100%'>
+          <button onclick="inputkey(13,'material_lookup');" style="width:100%">Add Material to Palette</button>
+        </div>
+
+        <ul id='palette_list'>
+        </ul>
+      </div>
+
+    </div>
+  </body>
+</html>

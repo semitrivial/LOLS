@@ -6,6 +6,8 @@
 
 char *html;
 char *js;
+char *lyphgui_html;
+char *lyphgui_js;
 
 int main( int argc, const char* argv[] )
 {
@@ -65,6 +67,9 @@ void init_lols_http_server( int port )
 
   html = load_file( "gui.html" );
   js = load_file( "gui.js" );
+
+  lyphgui_html = load_file( "lyphgui.html" );
+  lyphgui_js = load_file( "lyphgui.js" );
 
   memset( &hints, 0, sizeof(hints) );
   hints.ai_family = AF_UNSPEC;
@@ -137,10 +142,26 @@ void main_loop( void )
         continue;
       }
 
+      if ( !strcmp( req->query, "lyphgui" )
+      ||   !strcmp( req->query, "/lyphgui" )
+      ||   !strcmp( req->query, "lyphgui/" )
+      ||   !strcmp( req->query, "/lyphgui/" ) )
+      {
+        send_lyphgui( req );
+        continue;
+      }
+
       if ( !strcmp( req->query, "js/" )
       ||   !strcmp( req->query, "/js/" ) )
       {
         send_js( req );
+        continue;
+      }
+
+      if ( !strcmp( req->query, "lyphjs/" )
+      ||   !strcmp( req->query, "/lyphjs/" ) )
+      {
+        send_lyphjs( req );
         continue;
       }
 
@@ -697,6 +718,16 @@ void send_js( http_request *req )
   send_200_with_type( req, js, "application/javascript" );
 }
 
+void send_lyphgui( http_request *req )
+{
+  send_200_with_type( req, lyphgui_html, "text/html" );
+}
+
+void send_lyphjs( http_request *req )
+{
+  send_200_with_type( req, lyphgui_js, "application/javascript" );
+}
+
 char *load_file( char *filename )
 {
   FILE *fp;
@@ -796,8 +827,8 @@ const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, url_param
           }
 
           CREATE( *pptr, url_param, 1 );
-          (*pptr)->key = strdup( param );
-          (*pptr)->val = strdup( &equals[1] );
+          (*pptr)->key = url_decode( param );
+          (*pptr)->val = url_decode( &equals[1] );
           pptr++;
         }
       }

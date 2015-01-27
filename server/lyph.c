@@ -417,9 +417,9 @@ char *lyph_to_json( lyph *L )
 char *layer_to_json( layer *lyr )
 {
   int len;
-  char *id, *mtlname, *mtlid, *color, *buf;
+  char *id, *mtlname, *mtlid, *color, thickness[1024], *buf;
 
-  len = strlen( "{\"id\": \"\", \"mtlname\": \"\", \"mtlid\": \"\", \"color\": \"\"}" );
+  len = strlen( "{\"id\": \"\", \"mtlname\": \"\", \"mtlid\": \"\", \"color\": \"\", \"thickness\": \"unspecied\"}" );
 
   id = json_escape( trie_to_static( lyr->id ) );
   mtlname = json_escape( trie_to_static( lyr->material->name ) );
@@ -430,11 +430,16 @@ char *layer_to_json( layer *lyr )
   else
     color = strdup( "" );
 
-  len = len + strlen(id) + strlen(mtlname) + strlen(mtlid) + strlen(color);
+  if ( lyr->thickness != -1 )
+    sprintf( thickness, "%d", lyr->thickness );
+  else
+    sprintf( thickness, "Unspecified" );
+
+  len = len + strlen(id) + strlen(mtlname) + strlen(mtlid) + strlen(color) + strlen( thickness );
 
   CREATE( buf, char, len+1 );
 
-  sprintf( buf, "{\"id\": \"%s\", \"mtlname\": \"%s\", \"mtlid\": \"%s\", \"color\": \"%s\"}", id, mtlname, mtlid, color );
+  sprintf( buf, "{\"id\": \"%s\", \"mtlname\": \"%s\", \"mtlid\": \"%s\", \"color\": \"%s\", \"thickness\": \"%s\"}", id, mtlname, mtlid, color, thickness );
 
   free( id );
   free( mtlname );
