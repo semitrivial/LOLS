@@ -200,6 +200,7 @@ int parse_lyph_type( char *str );
 void load_lyph_label( char *subj_full, char *label );
 void load_lyph_type( char *subj_full, char *type_str );
 void acknowledge_has_layers( char *subj_full, char *bnode_id );
+void load_layer_material( char *subj_full, char *obj_full );
 void load_layer_color( char *subj_full, char *obj_full );
 void load_layer_to_lld( char *bnode, char *obj_full );
 void load_layer_thickness( char *subj_full, char *obj );

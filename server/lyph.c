@@ -27,6 +27,8 @@ void got_lyph_triple( char *subj, char *pred, char *obj )
     acknowledge_has_layers( s, o );
   else if ( str_begins( p, "http://www.w3.org/1999/02/22-rdf-syntax-ns#_" ) )
     load_layer_to_lld( s, o );
+  else if ( !strcmp( p, "http://open-physiology.org/lyph#has_material" ) )
+    load_layer_material( s, o );
   else if ( !strcmp( p, "http://open-physiology.org/lyph#has_color" ) )
     load_layer_color( s, o );
   else if ( !strcmp( p, "http://open-physiology.org/lyph#has_thickness" ) )
@@ -134,6 +136,24 @@ void load_layer_to_lld( char *bnode, char *obj_full )
 
   LINK( loading, lld->first_layer_loading, lld->last_layer_loading, next );
   lld->layer_count++;
+}
+
+void load_layer_material( char *subj_full, char *obj_full )
+{
+  char *subj = get_url_shortform( subj_full );
+  char *obj = get_url_shortform( obj_full );
+  layer *lyr = layer_by_id( subj );
+  lyph *mat;
+
+  if ( !lyr )
+    return;
+
+  mat = lyph_by_id( obj );
+
+  if ( !mat )
+    return;
+
+  lyr->material = mat;
 }
 
 void load_layer_color( char *subj_full, char *obj_full )
@@ -347,6 +367,7 @@ void fprintf_layer( FILE *fp, layer *lyr, int bnodes, int cnt, trie *avoid_dupes
 {
   char *lid = id_as_iri( lyr->id );
   trie *dupe_search;
+  char *mat_iri;
 
   fprintf( fp, "_:node%d <http://www.w3.org/1999/02/22-rdf-syntax-ns#_%d> %s .\n", bnodes, cnt, lid );
 
@@ -359,6 +380,10 @@ void fprintf_layer( FILE *fp, layer *lyr, int bnodes, int cnt, trie *avoid_dupes
   }
 
   trie_strdup( lid, avoid_dupes );
+
+  mat_iri = id_as_iri( lyr->material->id );
+  fprintf( fp, "%s <http://open-physiology.org/lyph#has_material> %s .\n", lid, mat_iri );
+  free( mat_iri );
 
   if ( lyr->color )
   {
