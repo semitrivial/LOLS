@@ -34,6 +34,7 @@ typedef struct LOAD_LAYERS_DATA load_layers_data;
 typedef struct LYPHNODE lyphnode;
 typedef struct LYPHEDGE lyphedge;
 typedef struct EXIT_DATA exit_data;
+typedef struct LYPHSTEP lyphstep;
 
 /*
  * Structures
@@ -104,6 +105,11 @@ struct LYPHNODE
   exit_data **exits;
 };
 
+typedef enum
+{
+  LYPHNODE_SEEN = 1
+} lyphnode_flags;
+
 struct LYPHEDGE
 {
   trie *id;
@@ -124,6 +130,16 @@ struct EXIT_DATA
 {
   lyphnode *to;
   lyphedge *via;
+};
+
+struct LYPHSTEP
+{
+  lyphstep *next;
+  lyphstep *prev;
+  int depth;
+  lyphstep *backtrace;
+  lyphnode *location;
+  lyphedge *edge;
 };
 
 struct LOAD_LAYERS_DATA
@@ -221,6 +237,7 @@ char *lyph_to_json( lyph *L );
 char *layer_to_json( layer *lyr );
 char *lyphnode_to_json( lyphnode *n, int include_exits );
 char *lyphedge_to_json( lyphedge *e );
+char *lyphpath_to_json( lyphedge **path );
 char *exit_to_json( exit_data *x );
 layer *layer_by_id( char *id );
 layer *layer_by_description( char *mtid, int thickness, char *color );
@@ -256,3 +273,5 @@ int word_from_line( char **line, char *buf );
 char *lyphedge_type_str( int type );
 int parse_lyph_type_str( char *type );
 void add_exit( lyphedge *e, lyphnode *n );
+lyphedge **compute_lyphpath( lyphnode *from, lyphnode *to );
+void free_lyphsteps( lyphstep *head );

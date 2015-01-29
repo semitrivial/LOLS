@@ -143,7 +143,8 @@ int load_lyphedges_one_line( char *line, char **err )
     from->id = fromtr;
     fromtr->data = (trie **)from;
     from->flags = 0;
-    from->exits = NULL;
+    CREATE( from->exits, exit_data *, 1 );
+    from->exits[0] = NULL;
   }
   else
     from = (lyphnode *)fromtr->data;
@@ -157,7 +158,8 @@ int load_lyphedges_one_line( char *line, char **err )
     to->id = totr;
     totr->data = (trie **)to;
     to->flags = 0;
-    to->exits = NULL;
+    CREATE( to->exits, exit_data *, 1 );
+    to->exits[0] = NULL;
   }
   else
     to = (lyphnode *)totr->data;
@@ -168,10 +170,6 @@ int load_lyphedges_one_line( char *line, char **err )
   e->to = to;
   e->au = NULL;
 
-  /*
-   * Temporarily assume all edges are two-way
-   */
-  add_exit( e, to );
   add_exit( e, from );
 
   return 1;
@@ -208,7 +206,9 @@ void add_exit( lyphedge *e, lyphnode *n )
     size = x - n->exits;
 
     CREATE( x, exit_data *, size + 2 );
-    memcpy( x, n->exits, size * sizeof(exit_data *) );
+
+    if ( size )
+      memcpy( x, n->exits, size * sizeof(exit_data *) );
 
     CREATE( x[size], exit_data, 1 );
     x[size]->to = to;
@@ -1178,6 +1178,56 @@ char *lyphedge_to_json( lyphedge *e )
   return json;
 }
 
+char *lyphpath_to_json( lyphedge **path )
+{
+  lyphedge **ptr;
+  char **edges, **edgesptr, *buf, *bptr;
+  int steps, len, fFirst = 0;
+
+  len = strlen( "{\"length\": \"\", \"edges\": []}" ) + 1024;
+
+  for ( ptr = path; *ptr; ptr++ )
+    ;
+
+  steps = ptr - path;
+
+  CREATE( edges, char *, steps );
+
+  for ( ptr = path, edgesptr = edges; *ptr; ptr++ )
+  {
+    *edgesptr = lyphedge_to_json( *ptr );
+    len += strlen( *edgesptr ) + strlen( "," );
+    edgesptr++;
+  }
+
+  CREATE( buf, char, len + 1 );
+
+  sprintf( buf, "{\"length\": \"%d\", \"edges\": [", steps );
+  bptr = &buf[strlen(buf)];
+
+  for ( ptr = path, edgesptr = edges; *ptr; ptr++ )
+  {
+    if ( fFirst )
+      *bptr++ = ',';
+    else
+      fFirst = 1;
+
+    sprintf( bptr, "%s", *edgesptr );
+    bptr = &bptr[strlen(bptr)];
+
+    free( *edgesptr );
+    edgesptr++;
+  }
+
+  free( edges );
+
+  *bptr++ = ']';
+  *bptr++ = '}';
+  *bptr = '\0';
+
+  return buf;
+}
+
 char *lyph_type_as_char( lyph *L )
 {
   switch( L->type )
@@ -1274,4 +1324,88 @@ int parse_lyph_type( char *str )
     return LYPH_BASIC;
 
   return -1;
+}
+
+lyphedge **compute_lyphpath( lyphnode *from, lyphnode *to )
+{
+  lyphstep *head = NULL, *tail = NULL, *step, *curr;
+
+  if ( from == to )
+  {
+    lyphedge **path;
+
+    CREATE( path, lyphedge *, 1 );
+    path[0] = NULL;
+
+    return path;
+  }
+
+  CREATE( step, lyphstep, 1 );
+  step->depth = 0;
+  step->backtrace = NULL;
+  step->location = from;
+  step->edge = NULL;
+
+  LINK2( step, head, tail, next, prev );
+  curr = step;
+  from->flags |= LYPHNODE_SEEN;
+
+  for ( ; ; curr = curr->next )
+  {
+    exit_data **x;
+
+    if ( !curr )
+    {
+      free_lyphsteps( head );
+      return NULL;
+    }
+
+    if ( curr->location == to )
+    {
+      lyphedge **path, **pptr;
+
+      CREATE( path, lyphedge *, curr->depth + 1 );
+      pptr = &path[curr->depth-1];
+      path[curr->depth] = NULL;
+
+      do
+      {
+        *pptr-- = curr->edge;
+        curr = curr->backtrace;
+      }
+      while( curr->backtrace );
+
+      free_lyphsteps( head );
+      return path;
+    }
+
+    for ( x = curr->location->exits; *x; x++ )
+    {
+      if ( (*x)->to->flags & LYPHNODE_SEEN )
+        continue;
+
+      CREATE( step, lyphstep, 1 );
+      step->depth = curr->depth + 1;
+      step->backtrace = curr;
+      step->location = (*x)->to;
+      step->edge = (*x)->via;
+      LINK2( step, head, tail, next, prev );
+      step->location->flags |= LYPHNODE_SEEN;
+    }
+  }
+
+  return NULL;
+}
+
+void free_lyphsteps( lyphstep *head )
+{
+  lyphstep *step, *step_next;
+
+  for ( step = head; step; step = step_next )
+  {
+    step_next = step->next;
+
+    step->location->flags &= ~(LYPHNODE_SEEN);
+    free( step );
+  }
 }

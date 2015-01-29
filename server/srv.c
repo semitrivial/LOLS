@@ -209,6 +209,14 @@ void main_loop( void )
         continue;
       }
 
+      if ( !strcmp( reqtype, "lyphpath" ) )
+      {
+        handle_lyphpath_request( req, params );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
       free_url_params( params );
 
       if ( !strcmp( reqtype, "uclsyntax" )
@@ -1061,6 +1069,57 @@ void handle_layer_request( char *request, http_request *req )
   }
 
   send_200_response( req, pretty_free( layer_to_json( lyr )  ) );
+}
+
+void handle_lyphpath_request( http_request *req, url_param **params )
+{
+  char *fromstr, *tostr;
+  lyphnode *from, *to;
+  lyphedge **path;
+
+  fromstr = get_url_param( params, "from" );
+
+  if ( !fromstr )
+  {
+    send_200_response( req, "{\"Error\": \"No 'from' parameter detected in your request\"}" );
+    return;
+  }
+
+  from = lyphnode_by_id( fromstr );
+
+  if ( !from )
+  {
+    send_200_response( req, "{\"Error\": \"The specified 'from' node was not found in the database\"}" );
+    return;
+  }
+
+  tostr = get_url_param( params, "to" );
+
+  if ( !tostr )
+  {
+    send_200_response( req, "{\"Error\": \"No 'to' parameter detected in your request\"}" );
+    return;
+  }
+
+  to = lyphnode_by_id( tostr );
+
+  if ( !to )
+  {
+    send_200_response( req, "{\"Error\": \"The specified 'to' node was not found in the database\"}" );
+    return;
+  }
+
+  path = compute_lyphpath( from, to );
+
+  if ( !path )
+  {
+    send_200_response( req, "{\"Error\": \"No path found\"}" );
+    return;
+  }
+
+  send_200_response( req, pretty_free( lyphpath_to_json( path ) ) );
+
+  free( path );
 }
 
 void handle_ucl_syntax_request( char *request, http_request *req )
