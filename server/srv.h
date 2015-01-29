@@ -123,5 +123,7 @@ void handle_makelayer_request( http_request *req, url_param **params );
 void handle_makelyph_request( http_request *req, url_param **params );
 void handle_lyph_request( char *request, http_request *req );
 void handle_layer_request( char *request, http_request *req );
+void handle_lyphedge_request( char *request, http_request *req );
+void handle_lyphnode_request( char *request, http_request *req );
 void free_url_params( url_param **buf );
 char *get_url_param( url_param **params, char *key );

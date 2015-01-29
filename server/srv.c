@@ -234,6 +234,20 @@ void main_loop( void )
         continue;
       }
 
+      if ( !strcmp( reqtype, "lyphedge" ) )
+      {
+        handle_lyphedge_request( request, req );
+        free( request );
+        continue;
+      }
+
+      if ( !strcmp( reqtype, "lyphnode" ) )
+      {
+        handle_lyphnode_request( request, req );
+        free( request );
+        continue;
+      }
+
       if ( !strcmp( reqtype, "iri" ) )
         data = get_labels_by_iri( request );
       else if ( !strcmp( reqtype, "label" ) && !fCaseInsens )
@@ -876,7 +890,7 @@ const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, http_requ
 
 void handle_makelayer_request( http_request *req, url_param **params )
 {
-  char *mtid, *color, *thickstr, *json;
+  char *mtid, *color, *thickstr;
   int thickness;
   layer *lyr;
 
@@ -905,16 +919,12 @@ void handle_makelayer_request( http_request *req, url_param **params )
     return;
   }
 
-  json = layer_to_json( lyr );
-
-  send_200_response( req, json );
-
-  free( json );
+  send_200_response( req, pretty_free( layer_to_json( lyr ) ) );
 }
 
 void handle_makelyph_request( http_request *req, url_param **params )
 {
-  char *name, *typestr, *json;
+  char *name, *typestr;
   int type, lcnt;
   static layer **lyrs;
   layer **lptr;
@@ -996,17 +1006,12 @@ void handle_makelyph_request( http_request *req, url_param **params )
     return;
   }
 
-  json = lyph_to_json( L );
-
-  send_200_response( req, json );
-
-  free( json );
+  send_200_response( req, pretty_free( lyph_to_json( L ) ) );
 }
 
 void handle_lyph_request( char *request, http_request *req )
 {
   lyph *L;
-  char *json;
 
   L = lyph_by_id( request );
 
@@ -1016,17 +1021,38 @@ void handle_lyph_request( char *request, http_request *req )
     return;
   }
 
-  json = lyph_to_json( L );
+  send_200_response( req, pretty_free( lyph_to_json( L )  ) );
+}
 
-  send_200_response( req, json );
+void handle_lyphedge_request( char *request, http_request *req )
+{
+  lyphedge *e = lyphedge_by_id( request );
 
-  free( json );
+  if ( !e )
+  {
+    send_200_response( req, "{\"Error\": \"No lyphedge by that id\"}" );
+    return;
+  }
+
+  send_200_response( req, pretty_free( lyphedge_to_json( e ) ) );
+}
+
+void handle_lyphnode_request( char *request, http_request *req )
+{
+  lyphnode *n = lyphnode_by_id( request );
+
+  if ( !n )
+  {
+    send_200_response( req, "{\"Error\": \"No lyphnode by that id\"}" );
+    return;
+  }
+
+  send_200_response( req, pretty_free( lyphnode_to_json( n, 1 ) ) );
 }
 
 void handle_layer_request( char *request, http_request *req )
 {
   layer *lyr = layer_by_id( request );
-  char *json;
 
   if ( !lyr )
   {
@@ -1034,11 +1060,7 @@ void handle_layer_request( char *request, http_request *req )
     return;
   }
 
-  json = layer_to_json( lyr );
-
-  send_200_response( req, json );
-
-  free( json );
+  send_200_response( req, pretty_free( layer_to_json( lyr )  ) );
 }
 
 void handle_ucl_syntax_request( char *request, http_request *req )

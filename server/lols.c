@@ -13,6 +13,7 @@ void init_lols(void)
   lyphnode_ids = blank_trie();
   lyphedge_ids = blank_trie();
   lyphedge_names = blank_trie();
+  lyphedge_fmas = blank_trie();
 
   init_html_codes();
 

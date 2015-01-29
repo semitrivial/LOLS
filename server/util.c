@@ -12,6 +12,13 @@ void log_string( char *txt )
   #endif
 }
 
+void log_linenum( int linenum )
+{
+  #ifdef LOLS_UNIX_CMDLINE
+    printf( "(Line %d)\n", linenum );
+  #endif
+}
+
 void error_message( char *err )
 {
   #ifdef LOLS_UNIX_CMDLINE
@@ -214,4 +221,26 @@ int is_number( const char *arg )
   }
 
   return 1;
+}
+
+char *pretty_free( char *json )
+{
+  static char *pretty;
+  char *err;
+
+  if ( pretty )
+    free( pretty );
+
+  pretty = json_format( json, 2, &err );
+
+  if ( !pretty )
+  {
+    pretty = json;
+    log_string( "json_format failed during a call to pretty_free" );
+    log_string( err );
+  }
+  else
+    free( json );
+
+  return pretty;
 }

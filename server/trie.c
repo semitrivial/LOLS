@@ -10,6 +10,7 @@ trie *layer_ids;
 trie *lyphnode_ids;
 trie *lyphedge_ids;
 trie *lyphedge_names;
+trie *lyphedge_fmas;
 
 #ifdef LOLS_WINDOWS
 char *strndup(const char *x, int len)

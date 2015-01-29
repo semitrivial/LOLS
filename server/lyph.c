@@ -6,9 +6,291 @@ int top_layer_id;
 int top_lyph_id;
 trie *blank_nodes;
 
-void load_lyphedges( void )
+int load_lyphedges( void )
 {
-  return;
+  FILE *fp;
+  int line = 1;
+  char c, row[MAX_LYPHEDGE_LINE_LEN], *rptr = row, *end = &row[MAX_LYPHEDGE_LINE_LEN - 1], *err = NULL;
+
+  /*
+   * Variables for QUICK_GETC
+   */
+  char read_buf[READ_BLOCK_SIZE], *read_end = &read_buf[READ_BLOCK_SIZE], *read_ptr = read_end;
+  int fread_len;
+
+  log_string( "Loading lyphedges..." );
+
+  fp = fopen( "lyphedges.dat", "r" );
+
+  if ( !fp )
+  {
+    log_string( "Could not open lyphedges.dat for reading" );
+    return 0;
+  }
+
+  for ( ; ; )
+  {
+    QUICK_GETC( c, fp );
+
+    if ( !c || c == '\n' || c == '\r' )
+    {
+      if ( rptr == row )
+      {
+        if ( c )
+        {
+          line++;
+          continue;
+        }
+        else
+          return 1;
+      }
+
+      *rptr = '\0';
+
+      if ( !load_lyphedges_one_line( row, &err ) )
+      {
+        log_string( "Error while loading lyphedges file." );
+        log_linenum( line );
+        log_string( err );
+
+        return 0;
+      }
+
+      if ( !c )
+        return 1;
+
+      line++;
+      rptr = row;
+    }
+    else
+    {
+      if ( rptr >= end )
+      {
+        log_string( "Error while loading lyphedges file." );
+        log_linenum( line );
+        log_string( "Line exceeds maximum length" );
+
+        return 0;
+      }
+
+      *rptr++ = c;
+    }
+  }
+
+  return 1;
+}
+
+int load_lyphedges_one_line( char *line, char **err )
+{
+  char edgeidbuf[MAX_LYPHEDGE_LINE_LEN+1];
+  char typebuf[MAX_LYPHEDGE_LINE_LEN+1];
+  char fmabuf[MAX_LYPHEDGE_LINE_LEN+1];
+  char frombuf[MAX_LYPHEDGE_LINE_LEN+1];
+  char tobuf[MAX_LYPHEDGE_LINE_LEN+1];
+  char namebuf[MAX_LYPHEDGE_LINE_LEN+1];
+  lyphedge *e;
+  lyphnode *from, *to;
+  trie *etr, *fromtr, *totr;
+
+  #ifdef KEY
+  #undef KEY
+  #endif
+  #define KEY( dest, errmsg )\
+    do\
+    {\
+      if ( !word_from_line( &line, (dest) ) )\
+      {\
+        *err = (errmsg);\
+        return 0;\
+      }\
+    }\
+    while(0)
+
+  KEY( edgeidbuf, "Missing edge ID" );
+  KEY( typebuf, "Missing edge type" );
+  KEY( fmabuf, "Missing FMA ID" );
+  KEY( frombuf, "Missing initial node ID" );
+  KEY( tobuf, "Missing terminal node ID" );
+  KEY( namebuf, "Missing description" );
+
+  etr = trie_strdup( edgeidbuf, lyphedge_ids );
+
+  if ( !etr->data )
+  {
+    CREATE( e, lyphedge, 1 );
+    e->id = etr;
+    etr->data = (trie **)e;
+  }
+  else
+    e = (lyphedge *)etr->data;
+
+  e->type = strtol( typebuf, NULL, 10 );
+
+  if ( e->type < 1 || e->type > 4 )
+  {
+    *err = "Invalid edge type";
+    return 0;
+  }
+
+  e->fma = trie_strdup( fmabuf, lyphedge_fmas );
+
+  fromtr = trie_strdup( frombuf, lyphnode_ids );
+
+  if ( !fromtr->data )
+  {
+    CREATE( from, lyphnode, 1 );
+
+    from->id = fromtr;
+    fromtr->data = (trie **)from;
+    from->flags = 0;
+    from->exits = NULL;
+  }
+  else
+    from = (lyphnode *)fromtr->data;
+
+  totr = trie_strdup( tobuf, lyphnode_ids );
+
+  if ( !totr->data )
+  {
+    CREATE( to, lyphnode, 1 );
+
+    to->id = totr;
+    totr->data = (trie **)to;
+    to->flags = 0;
+    to->exits = NULL;
+  }
+  else
+    to = (lyphnode *)totr->data;
+
+  e->name = trie_strdup( namebuf, lyphedge_names );
+
+  e->from = from;
+  e->to = to;
+  e->au = NULL;
+
+  /*
+   * Temporarily assume all edges are two-way
+   */
+  add_exit( e, to );
+  add_exit( e, from );
+
+  return 1;
+}
+
+void add_exit( lyphedge *e, lyphnode *n )
+{
+  lyphnode *to;
+  exit_data **x;
+
+  if ( e->to == n )
+  {
+    if ( e->from == n )
+      return;
+
+    to = e->from;
+  }
+  else
+    to = e->to;
+
+  if ( n->exits )
+  {
+    int size;
+
+    for ( x = n->exits; *x; x++ )
+      if ( (*x)->to == to )
+      {
+        /*
+         * Possible future to-do: keep track of ALL edges associated with an exit, not just one
+         */
+        return;
+      }
+
+    size = x - n->exits;
+
+    CREATE( x, exit_data *, size + 2 );
+    memcpy( x, n->exits, size * sizeof(exit_data *) );
+
+    CREATE( x[size], exit_data, 1 );
+    x[size]->to = to;
+    x[size]->via = e;
+    x[size+1] = NULL;
+
+    free( n->exits );
+    n->exits = x;
+  }
+  else
+  {
+    CREATE( x, exit_data *, 2 );
+    CREATE( x[0], exit_data, 1 );
+    x[0]->to = to;
+    x[0]->via = e;
+    x[1] = NULL;
+
+    n->exits = x;
+  }
+}
+
+char *lyphedge_type_str( int type )
+{
+  switch( type )
+  {
+    case LYPHEDGE_ARTERIAL:
+      return "arterial";
+    case LYPHEDGE_MICROCIRC:
+      return "microcirculation";
+    case LYPHEDGE_VENOUS:
+      return "venous";
+    case LYPHEDGE_CARDIAC:
+      return "cardiac-chamber";
+    default:
+      return "unknown";
+  }
+}
+
+int parse_lyph_type_str( char *type )
+{
+  if ( !strcmp( type, "arterial" ) )
+    return LYPHEDGE_ARTERIAL;
+  if ( !strcmp( type, "microcirculation" ) )
+    return LYPHEDGE_MICROCIRC;
+  if ( !strcmp( type, "venous" ) )
+    return LYPHEDGE_VENOUS;
+  if ( !strcmp( type, "cardiac-chamber" ) )
+    return LYPHEDGE_CARDIAC;
+
+  return -1;
+}
+
+int word_from_line( char **line, char *buf )
+{
+  char *lptr = *line, *bptr = buf;
+
+  for ( ; ; )
+  {
+    switch( *lptr )
+    {
+      case '\n':
+      case '\r':
+        return 0;
+
+      case '\t':
+      case '\0':
+        if ( bptr == buf )
+          return 0;
+
+        *bptr = '\0';
+        if ( *lptr )
+          *line = &lptr[1];
+        else
+          *line = lptr;
+
+        return 1;
+
+      default:
+        *bptr++ = *lptr++;
+        continue;
+    }
+  }
 }
 
 void got_lyph_triple( char *subj, char *pred, char *obj )
@@ -637,10 +919,30 @@ lyph *lyph_by_id( char *id )
   return NULL;
 }
 
+lyphnode *lyphnode_by_id( char *id )
+{
+  trie *t = trie_search( id, lyphnode_ids );
+
+  if ( t )
+    return (lyphnode *)t->data;
+
+  return NULL;
+}
+
+lyphedge *lyphedge_by_id( char *id )
+{
+  trie *t = trie_search( id, lyphedge_ids );
+
+  if ( t )
+    return (lyphedge *)t->data;
+
+  return NULL;
+}
+
 char *lyph_to_json( lyph *L )
 {
   int len;
-  char *id, *name, *type, *buf, *bptr, *pretty;
+  char *id, *name, *type, *buf, *bptr;
   char **layers;
   layer **lptr;
 
@@ -709,10 +1011,7 @@ char *lyph_to_json( lyph *L )
   *bptr++ = '}';
   *bptr   = '\0';
 
-  pretty = json_format( buf, 2, NULL );
-  free( buf );
-
-  return pretty;
+  return buf;
 }
 
 char *layer_to_json( layer *lyr )
@@ -748,6 +1047,135 @@ char *layer_to_json( layer *lyr )
   free( color );
 
   return buf;
+}
+
+char *lyphnode_to_json( lyphnode *n, int include_exits )
+{
+  int len;
+  char *id = json_escape( trie_to_static( n->id ) );
+  char **xjson;
+  char *buf, *bptr;
+
+  len = strlen( "{\"id\": \"\", \"flags\": \"\", \"exits\": []}" );
+
+  len = len + strlen(id) + 1024;
+
+  if ( include_exits )
+  {
+    char **xjsptr;
+    exit_data **x;
+
+    for ( x = n->exits; *x; x++ )
+      ;
+
+    CREATE( xjson, char *, x - n->exits );
+
+    for ( x = n->exits, xjsptr = xjson; *x; x++ )
+    {
+      *xjsptr = exit_to_json( *x );
+      len += strlen( *xjsptr ) + strlen( "," );
+      xjsptr++;
+    }
+  }
+
+  CREATE( buf, char, len+1 );
+
+  sprintf( buf, "{\"id\": \"%s\", \"flags\": \"%d\"", id, n->flags );
+  bptr = &buf[strlen(buf)];
+  free( id );
+
+  if ( include_exits )
+  {
+    char **xjsptr;
+    exit_data **x;
+    int fFirst = 0;
+
+    sprintf( bptr, ", \"exits\": [" );
+    bptr = &bptr[strlen(bptr)];
+
+    for ( x = n->exits, xjsptr = xjson; *x; x++ )
+    {
+      if ( fFirst )
+        *bptr++ = ',';
+      else
+        fFirst = 1;
+
+      sprintf( bptr, "%s", *xjsptr );
+      free( *xjsptr++ );
+      bptr = &bptr[strlen(bptr)];
+    }
+
+    free( xjson );
+    *bptr++ = ']';
+  }
+
+  *bptr++ = '}';
+  *bptr = '\0';
+
+  return buf;
+}
+
+char *exit_to_json( exit_data *x )
+{
+  char *to_id = json_escape( trie_to_static( x->to->id ) );
+  char *via_id = json_escape( trie_to_static( x->via->id ) );
+  char *json;
+  int len;
+
+  len = strlen( "{\"to\": \"\", \"via\": \"\"}" );
+  len += strlen( to_id );
+  len += strlen( via_id );
+
+  CREATE( json, char, len + 1 );
+
+  sprintf( json, "{\"to\": \"%s\", \"via\": \"%s\"}", to_id, via_id );
+
+  free( to_id );
+  free( via_id );
+
+  return json;
+}
+
+char *lyphedge_to_json( lyphedge *e )
+{
+  int len;
+  char *id = json_escape( trie_to_static( e->id ) );
+  char *fma = json_escape( trie_to_static( e->fma ) );
+  char *name = json_escape( trie_to_static( e->name ) );
+  char *from = lyphnode_to_json( e->from, 0 );
+  char *to = lyphnode_to_json( e->to, 0 );
+  char *au;
+  char *json;
+
+  if ( e->au )
+  {
+    char *quoted;
+
+    au = json_escape( trie_to_static( e->au->id ) );
+    CREATE( quoted, char, strlen(au) + strlen( "\"\"" ) + 1 );
+    sprintf( quoted, "\"%s\"", au );
+    free( au );
+    au = quoted;
+  }
+  else
+    au = "null";
+
+  len = strlen( "{\"id\": \"\", \"fma\": \"\", \"name\": \"\", \"type\": \"\", \"from\": , \"to\": , \"au\": }" );
+  len += strlen( id ) + strlen( fma ) + strlen( name ) + 1024 + strlen( from ) + strlen( to ) + strlen( au );
+
+  CREATE( json, char, len+1 );
+
+  sprintf( json, "{\"id\": \"%s\", \"fma\": \"%s\", \"name\": \"%s\", \"type\": \"%d\", \"from\": %s, \"to\": %s, \"au\": %s}", id, fma, name, e->type, from, to, au );
+
+  free( id );
+  free( fma );
+  free( name );
+  free( from );
+  free( to );
+  if ( e->au )
+    free( au );
+
+  return json;
 }
 
 char *lyph_type_as_char( lyph *L )

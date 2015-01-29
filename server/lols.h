@@ -18,6 +18,7 @@
 #define MAX_AUTOCOMPLETE_RESULTS_POSTSORT 10
 #define MAX_URL_PARAMS 32
 #define MAX_URL_PARAM_LEN 512
+#define MAX_LYPHEDGE_LINE_LEN (MAX_IRI_LEN * 3)
 
 /*
  * Typedefs
@@ -32,6 +33,7 @@ typedef struct LAYER_LOADING layer_loading;
 typedef struct LOAD_LAYERS_DATA load_layers_data;
 typedef struct LYPHNODE lyphnode;
 typedef struct LYPHEDGE lyphedge;
+typedef struct EXIT_DATA exit_data;
 
 /*
  * Structures
@@ -98,16 +100,30 @@ struct LAYER
 struct LYPHNODE
 {
   trie *id;
+  int flags;
+  exit_data **exits;
 };
 
 struct LYPHEDGE
 {
   trie *id;
   trie *name;
+  int type;
   lyphnode *from;
   lyphnode *to;
   lyph *au;
   trie *fma;
+};
+
+typedef enum
+{
+  LYPHEDGE_ARTERIAL, LYPHEDGE_MICROCIRC, LYPHEDGE_VENOUS, LYPHEDGE_CARDIAC
+} lyphedge_types;
+
+struct EXIT_DATA
+{
+  lyphnode *to;
+  lyphedge *via;
 };
 
 struct LOAD_LAYERS_DATA
@@ -137,6 +153,7 @@ extern trie *lyph_ids;
 extern trie *layer_ids;
 extern trie *lyphnode_ids;
 extern trie *lyphedge_ids;
+extern trie *lyphedge_fmas;
 extern trie *lyphedge_names;
 
 /*
@@ -173,6 +190,7 @@ int cmp_trie_data (const void * a, const void * b);
  * util.c
  */
 void log_string( char *txt );
+void log_linenum( int linenum );
 char *html_encode( char *str );
 void init_html_codes( void );
 char *lowercaserize( char *x );
@@ -180,6 +198,7 @@ char *get_url_shortform( char *iri );
 char *url_decode(char *str);
 int is_number( const char *arg );
 void error_message( char *err );
+char *pretty_free( char *json );
 
 /*
  * ucl.c
@@ -200,9 +219,14 @@ lyph *lyph_by_name( char *name );
 lyph *lyph_by_id( char *id );
 char *lyph_to_json( lyph *L );
 char *layer_to_json( layer *lyr );
+char *lyphnode_to_json( lyphnode *n, int include_exits );
+char *lyphedge_to_json( lyphedge *e );
+char *exit_to_json( exit_data *x );
 layer *layer_by_id( char *id );
 layer *layer_by_description( char *mtid, int thickness, char *color );
 layer *layer_by_description_recurse( const lyph *L, const float thickness, const char *color, const trie *t );
+lyphnode *lyphnode_by_id( char *id );
+lyphedge *lyphedge_by_id( char *id );
 trie *assign_new_layer_id( layer *lyr );
 lyph *lyph_by_layers( int type, layer **layers, char *name );
 lyph *lyph_by_layers_recurse( int type, layer **layers, trie *t );
@@ -226,4 +250,9 @@ void load_layer_to_lld( char *bnode, char *obj_full );
 void load_layer_thickness( char *subj_full, char *obj );
 lyph *missing_layers( trie *t );
 void handle_loaded_layers( trie *t );
-void load_lyphedges( void );
+int load_lyphedges( void );
+int load_lyphedges_one_line( char *line, char **err );
+int word_from_line( char **line, char *buf );
+char *lyphedge_type_str( int type );
+int parse_lyph_type_str( char *type );
+void add_exit( lyphedge *e, lyphnode *n );
