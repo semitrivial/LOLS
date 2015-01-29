@@ -50,6 +50,7 @@ struct HTTP_REQUEST
   http_request *prev;
   http_conn *conn;
   char *query;
+  char *callback;  //JSONP support
   int *dead;
 };
 
@@ -116,7 +117,7 @@ void send_js( http_request *req );
 void send_lyphgui( http_request *req );
 void send_lyphjs( http_request *req );
 char *load_file( char *filename );
-const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, url_param **params );
+const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, http_request *req, url_param **params );
 void handle_ucl_syntax_request( char *request, http_request *req );
 void handle_makelayer_request( http_request *req, url_param **params );
 void handle_makelyph_request( http_request *req, url_param **params );

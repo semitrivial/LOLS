@@ -178,7 +178,7 @@ void main_loop( void )
       *reqptr = '\0';
       reqtype = (*req->query == '/') ? req->query + 1 : req->query;
 
-      parse_params_err = parse_params( &reqptr[1], &fShortIRI, &fCaseInsens, params );
+      parse_params_err = parse_params( &reqptr[1], &fShortIRI, &fCaseInsens, req, params );
 
       if ( parse_params_err )
       {
@@ -415,6 +415,9 @@ void free_http_request( http_request *r )
   if ( r->query )
     free( r->query );
 
+  if ( r->callback )
+    free( r->callback );
+
   free( r );
 }
 
@@ -456,6 +459,7 @@ void http_answer_the_phone( int srvsock )
   req->next = NULL;
   req->conn = c;
   req->query = NULL;
+  req->callback = NULL;
   c->req = req;
 
   LINK2( req, first_http_req, last_http_req, next, prev );
@@ -632,11 +636,12 @@ void http_send( http_request *req, char *txt, int len )
     c->outbuf = newbuf;
     c->outbuflen = len;
     c->outbufsize = len+10;
-    return;
   }
-
-  memcpy( c->outbuf, txt, len );
-  c->outbuflen = len;
+  else
+  {
+    memcpy( c->outbuf, txt, len );
+    c->outbuflen = len;
+  }
 }
 
 void send_400_response( http_request *req )
@@ -664,7 +669,18 @@ void send_200_response( http_request *req, char *txt )
 
 void send_200_with_type( http_request *req, char *txt, char *type )
 {
-  char buf[2*MAX_STRING_LEN];
+  char buf[3*MAX_STRING_LEN];
+
+  /*
+   * JSONP support
+   */
+  if ( req->callback )
+  {
+    char *jsonp = malloc( strlen(txt) + strlen(req->callback) + strlen( "(\n\n);" ) + 1 );
+
+    sprintf( jsonp, "%s(\n%s\n);", req->callback, txt );
+    txt = jsonp;
+  }
 
   sprintf( buf, "HTTP/1.1 200 OK\r\n"
                 "Date: %s\r\n"
@@ -678,6 +694,9 @@ void send_200_with_type( http_request *req, char *txt, char *type )
                 nocache_headers(),
                 strlen(txt),
                 txt );
+
+  if ( req->callback )
+    free( txt );
 
   http_write( req, buf );
 }
@@ -763,7 +782,7 @@ char *load_file( char *filename )
   }
 }
 
-const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, url_param **params )
+const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, http_request *req, url_param **params )
 {
   char *bptr;
   char *param;
@@ -829,6 +848,15 @@ const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, url_param
           CREATE( *pptr, url_param, 1 );
           (*pptr)->key = url_decode( param );
           (*pptr)->val = url_decode( &equals[1] );
+
+          if ( !strcmp( (*pptr)->key, "callback" ) )
+          {
+            if ( req->callback )
+              free( req->callback );
+
+            req->callback = strdup( (*pptr)->val );
+          }
+
           pptr++;
         }
       }
