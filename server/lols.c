@@ -10,11 +10,15 @@ void init_lols(void)
   lyph_names = blank_trie();
   lyph_ids = blank_trie();
   layer_ids = blank_trie();
+  lyphnode_ids = blank_trie();
+  lyphedge_ids = blank_trie();
+  lyphedge_names = blank_trie();
 
   init_html_codes();
 
 #ifdef ENABLE_LYPHS
   load_lyphs();
+  load_lyphedges();
 #endif
 
   return;

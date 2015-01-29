@@ -64,11 +64,13 @@ public class Convert
 
       for ( OWLClass c : classes )
       {
+        String cID = c.toString().trim();
+
         Set<OWLAnnotation> annots = c.getAnnotations(o, df.getRDFSLabel() );
         for ( OWLAnnotation a : annots )
         {
           if ( a.getValue() instanceof OWLLiteral )
-            System.out.print( "<" + c.toStringID() + "> <http://www.w3.org/2000/01/rdf-schema#label> \"" + ((OWLLiteral)a.getValue()).getLiteral() + "\" .\n" );
+            System.out.print( "<" + cID + "> <http://www.w3.org/2000/01/rdf-schema#label> \"" + ((OWLLiteral)a.getValue()).getLiteral().trim() + "\" .\n" );
         }
       }
     }

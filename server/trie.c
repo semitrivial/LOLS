@@ -7,6 +7,9 @@ trie *label_to_iris_lowercase;
 trie *lyph_names;
 trie *lyph_ids;
 trie *layer_ids;
+trie *lyphnode_ids;
+trie *lyphedge_ids;
+trie *lyphedge_names;
 
 #ifdef LOLS_WINDOWS
 char *strndup(const char *x, int len)

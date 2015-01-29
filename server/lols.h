@@ -30,6 +30,8 @@ typedef struct LYPH lyph;
 typedef struct LAYER layer;
 typedef struct LAYER_LOADING layer_loading;
 typedef struct LOAD_LAYERS_DATA load_layers_data;
+typedef struct LYPHNODE lyphnode;
+typedef struct LYPHEDGE lyphedge;
 
 /*
  * Structures
@@ -93,6 +95,21 @@ struct LAYER
   trie *id;
 };
 
+struct LYPHNODE
+{
+  trie *id;
+};
+
+struct LYPHEDGE
+{
+  trie *id;
+  trie *name;
+  lyphnode *from;
+  lyphnode *to;
+  lyph *au;
+  trie *fma;
+};
+
 struct LOAD_LAYERS_DATA
 {
   lyph *subj;
@@ -118,6 +135,9 @@ extern trie *label_to_iris_lowercase;
 extern trie *lyph_names;
 extern trie *lyph_ids;
 extern trie *layer_ids;
+extern trie *lyphnode_ids;
+extern trie *lyphedge_ids;
+extern trie *lyphedge_names;
 
 /*
  * Function prototypes
@@ -206,3 +226,4 @@ void load_layer_to_lld( char *bnode, char *obj_full );
 void load_layer_thickness( char *subj_full, char *obj );
 lyph *missing_layers( trie *t );
 void handle_loaded_layers( trie *t );
+void load_lyphedges( void );

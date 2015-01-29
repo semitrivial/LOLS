@@ -6,6 +6,11 @@ int top_layer_id;
 int top_lyph_id;
 trie *blank_nodes;
 
+void load_lyphedges( void )
+{
+  return;
+}
+
 void got_lyph_triple( char *subj, char *pred, char *obj )
 {
   char *s = subj, *p = pred, *o = obj;
