@@ -12,6 +12,22 @@ do\
 } while(0)
 
 /*
+ * Bit-twiddling macros
+ */
+#define SET_BIT( flags, bit )\
+do\
+  (flags) |= (bit);\
+while(0)
+
+#define IS_SET( flags, bit ) ( (flags) & (bit) )
+
+#define REMOVE_BIT( flags, bit )\
+do\
+  (flags) &= ~(bit);\
+while(0)
+
+
+/*
  * Link object into singly-linked list
  */
 #define LINK( link, first, last, next )\

@@ -1348,7 +1348,7 @@ lyphedge **compute_lyphpath( lyphnode *from, lyphnode *to )
 
   LINK2( step, head, tail, next, prev );
   curr = step;
-  from->flags |= LYPHNODE_SEEN;
+  SET_BIT( from->flags, LYPHNODE_SEEN );
 
   for ( ; ; curr = curr->next )
   {
@@ -1381,7 +1381,7 @@ lyphedge **compute_lyphpath( lyphnode *from, lyphnode *to )
 
     for ( x = curr->location->exits; *x; x++ )
     {
-      if ( (*x)->to->flags & LYPHNODE_SEEN )
+      if ( IS_SET( (*x)->to->flags, LYPHNODE_SEEN ) )
         continue;
 
       CREATE( step, lyphstep, 1 );
@@ -1390,7 +1390,7 @@ lyphedge **compute_lyphpath( lyphnode *from, lyphnode *to )
       step->location = (*x)->to;
       step->edge = (*x)->via;
       LINK2( step, head, tail, next, prev );
-      step->location->flags |= LYPHNODE_SEEN;
+      SET_BIT( step->location->flags, LYPHNODE_SEEN );
     }
   }
 
@@ -1405,7 +1405,7 @@ void free_lyphsteps( lyphstep *head )
   {
     step_next = step->next;
 
-    step->location->flags &= ~(LYPHNODE_SEEN);
+    REMOVE_BIT( step->location->flags, LYPHNODE_SEEN );
     free( step );
   }
 }
