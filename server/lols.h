@@ -117,7 +117,7 @@ struct LYPHEDGE
   int type;
   lyphnode *from;
   lyphnode *to;
-  lyph *au;
+  lyph *lyph;
   trie *fma;
 };
 

@@ -168,7 +168,7 @@ int load_lyphedges_one_line( char *line, char **err )
 
   e->from = from;
   e->to = to;
-  e->au = NULL;
+  e->lyph = NULL;
 
   add_exit( e, from );
 
@@ -1147,11 +1147,11 @@ char *lyphedge_to_json( lyphedge *e )
   char *au;
   char *json;
 
-  if ( e->au )
+  if ( e->lyph )
   {
     char *quoted;
 
-    au = json_escape( trie_to_static( e->au->id ) );
+    au = json_escape( trie_to_static( e->lyph->id ) );
     CREATE( quoted, char, strlen(au) + strlen( "\"\"" ) + 1 );
     sprintf( quoted, "\"%s\"", au );
     free( au );
@@ -1160,7 +1160,7 @@ char *lyphedge_to_json( lyphedge *e )
   else
     au = "null";
 
-  len = strlen( "{\"id\": \"\", \"fma\": \"\", \"name\": \"\", \"type\": \"\", \"from\": , \"to\": , \"au\": }" );
+  len = strlen( "{\"id\": \"\", \"fma\": \"\", \"name\": \"\", \"type\": \"\", \"from\": , \"to\": , \"lyph\": }" );
   len += strlen( id ) + strlen( fma ) + strlen( name ) + 1024 + strlen( from ) + strlen( to ) + strlen( au );
 
   CREATE( json, char, len+1 );
@@ -1172,7 +1172,7 @@ char *lyphedge_to_json( lyphedge *e )
   free( name );
   free( from );
   free( to );
-  if ( e->au )
+  if ( e->lyph )
     free( au );
 
   return json;
