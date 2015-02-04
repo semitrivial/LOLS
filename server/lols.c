@@ -20,6 +20,7 @@ void init_lols(void)
 #ifdef ENABLE_LYPHS
   load_lyphs();
   load_lyphedges();
+  load_lyphviews();
 #endif
 
   return;

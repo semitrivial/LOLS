@@ -123,6 +123,34 @@ do\
 
 #endif
 
+#define QUICK_GETLINE( buffer, bufferptr, c, fp )\
+do\
+{\
+  for( bufferptr = buffer; ;)\
+  {\
+    QUICK_GETC( c, fp );\
+    if ( !c )\
+    {\
+      if ( buffer == bufferptr )\
+        bufferptr = NULL;\
+      else\
+        *bufferptr = '\0';\
+      \
+      break;\
+    }\
+    \
+    if ( c == '\n' )\
+    {\
+      *bufferptr = '\0';\
+      break;\
+    }\
+    \
+    if ( c != '\r' )\
+      *bufferptr++ = c;\
+  }\
+}\
+while(0)
+
 /*
  * Timing macros
  */

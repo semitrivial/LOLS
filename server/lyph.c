@@ -2,9 +2,448 @@
 #include "nt_parse.h"
 
 char *lyph_type_as_char( lyph *L );
+void save_one_lyphview( lyphview *v, FILE *fp );
+int is_duplicate_view( lyphview *v, lyphnode **nodes, char **coords );
+int new_lyphview_id(void);
+
 int top_layer_id;
 int top_lyph_id;
 trie *blank_nodes;
+
+lyphview **views;
+lyphview obsolete_lyphview;
+int viewcount;
+
+lyphview *create_new_view( lyphnode **nodes, char **coords )
+{
+  lyphnode **inptr, **out;
+  lyphview *v, **vbuf;
+  char **cinptr, **coords_out, **coutptr;
+  int ncnt;
+
+  for ( inptr = nodes; *inptr; inptr++ )
+    ;
+
+  ncnt = inptr - nodes;
+
+  CREATE( out, lyphnode *, ncnt + 1 );
+  memcpy( out, nodes, (ncnt + 1) * sizeof(lyphnode *) );
+
+  CREATE( coords_out, char *, (ncnt * 2) + 1 );
+
+  for ( cinptr = coords, coutptr = coords_out; *cinptr; cinptr++ )
+    *coutptr++ = strdup( *cinptr );
+
+  *coutptr = NULL;
+
+  CREATE( v, lyphview, 1 );
+  v->nodes = out;
+  v->coords = coords_out;
+  v->id = new_lyphview_id();
+
+  CREATE( vbuf, lyphview *, viewcount + 2 );
+  memcpy( vbuf, views, viewcount * sizeof(lyphview *) );
+  vbuf[viewcount] = v;
+  vbuf[viewcount+1] = NULL;
+  viewcount++;
+  free( views );
+  views = vbuf;
+
+  save_lyphviews();
+
+  return v;
+}
+
+int new_lyphview_id(void)
+{
+  return viewcount+1;
+}
+
+lyphview *search_duplicate_view( lyphnode **nodes, char **coords )
+{
+  lyphview **v;
+
+  for ( v = views; *v; v++ )
+  {
+    if ( *v == &obsolete_lyphview )
+      continue;
+
+    if ( is_duplicate_view( *v, nodes, coords ) )
+      return *v;
+  }
+
+  return NULL;
+}
+
+int is_duplicate_view( lyphview *v, lyphnode **nodes, char **coords )
+{
+  lyphnode **vnodespt = v->nodes, **nodespt = nodes;
+  char **vcoordspt = v->coords, **coordspt = coords;
+
+  for ( ; *vnodespt; vnodespt++ )
+  {
+    if ( *nodespt++ != *vnodespt )
+      return 0;
+
+    if ( strcmp( *coordspt++, *vcoordspt++ ) )
+      return 0;
+
+    if ( strcmp( *coordspt++, *vcoordspt++ ) )
+      return 0;
+  }
+
+  if ( *nodespt )
+    return 0;
+
+  return 1;
+}
+
+lyphview *lyphview_by_id( char *idstr )
+{
+  int id = strtol( idstr, NULL, 10 );
+
+  if ( id < 0 || id > viewcount )
+    return NULL;
+
+  if ( views[id] == &obsolete_lyphview )
+    return NULL;
+
+  return views[id];
+}
+
+char *lyphview_to_json( lyphview *v )
+{
+  int len, cnt, fFirst = 0;
+  lyphnode **n;
+  char **nodesjs, **nodesjspt, **coords, *json, *jsonptr;
+
+  len = strlen( "{\"id\": \"\", \"nodes\": []}" ) + MAX_INT_LEN;
+
+  for ( n = v->nodes; *n; n++ )
+    ;
+
+  cnt = n - v->nodes;
+
+  CREATE( nodesjs, char *, cnt + 1 );
+  nodesjspt = nodesjs;
+
+  for ( n = v->nodes, coords = v->coords; *n; n++ )
+  {
+    len += strlen( "{\"node\": , \"x\": \"\", \"y\": \"\"}," );
+    *nodesjspt = lyphnode_to_json( *n, 1 );
+    len += strlen( *nodesjspt++ );
+    len += strlen( *coords++ );
+    len += strlen( *coords++ );
+  }
+
+  CREATE( json, char, len + 1 );
+
+  sprintf( json, "{\"id\": \"%d\", \"nodes\": [", v->id );
+  jsonptr = &json[strlen(json)];
+
+  for ( n = v->nodes, coords = v->coords, nodesjspt = nodesjs; *n; n++ )
+  {
+    if ( fFirst )
+      *jsonptr++ = ',';
+    else
+      fFirst = 1;
+
+    sprintf( jsonptr, "{\"node\": %s, \"x\": \"%s\", \"y\": \"%s\"}", *nodesjspt, coords[0], coords[1] );
+    free( *nodesjspt++ );
+    coords = &coords[2];
+    jsonptr = &jsonptr[strlen(jsonptr)];
+  }
+
+  *jsonptr++ = ']';
+  *jsonptr++ = '}';
+  *jsonptr = '\0';
+  free( nodesjs );
+
+  return json;
+}
+
+void save_lyphviews( void )
+{
+  FILE *fp;
+  lyphview **ptr;
+
+  if ( !views )
+    return;
+
+  fp = fopen( "lyphviews.dat", "w" );
+
+  if ( !fp )
+  {
+    log_string( "Error: Could not open lyphviews.dat for writing" );
+    return;
+  }
+
+  for ( ptr = views; *ptr; ptr++ )
+    ;
+
+  fprintf( fp, "TotalViews %ld\n", ptr - views );
+
+  for ( ptr = views; *ptr; ptr++ )
+  {
+    if ( *ptr != &obsolete_lyphview )
+      save_one_lyphview( *ptr, fp );
+  }
+
+  fclose( fp );
+}
+
+void save_one_lyphview( lyphview *v, FILE *fp )
+{
+  lyphnode **n;
+  char **c;
+
+  fprintf( fp, "View %d\n", v->id );
+
+  for ( n = v->nodes; *n; n++ )
+    ;
+
+  fprintf( fp, "Nodes %ld\n", n - v->nodes );
+
+  for ( n = v->nodes, c = v->coords; *n; n++ )
+  {
+    fprintf( fp, "N %s %s %s\n", trie_to_static( (*n)->id ), c[0], c[1] );
+    c = &c[2];
+  }
+}
+
+void init_default_lyphviews( void )
+{
+  viewcount = 0;
+
+  CREATE( views, lyphview *, 1 );
+
+  views[0] = NULL;
+}
+
+void load_lyphviews( void )
+{
+  FILE *fp;
+  lyphview *v;
+  lyphnode **nodes;
+  char **coords;
+  char buf[MAX_STRING_LEN], *bptr, c;
+  int cnt, line = 1, prev_view_index = -1, id = -1;
+
+  /*
+   * Variables for QUICK_GETC
+   */
+  char read_buf[READ_BLOCK_SIZE], *read_end = &read_buf[READ_BLOCK_SIZE], *read_ptr = read_end;
+  int fread_len;
+
+  fp = fopen( "lyphviews.dat", "r" );
+
+  if ( !fp )
+  {
+    log_string( "Could not open lyphviews.dat for reading--no lyph views loaded" );
+    init_default_lyphviews();
+    return;
+  }
+
+  QUICK_GETLINE( buf, bptr, c, fp );
+
+  if ( !bptr )
+  {
+    log_string( "lyphviews.dat appears to be blank or start with a blank line--no lyph views loaded" );
+    init_default_lyphviews();
+    fclose(fp);
+    return;
+  }
+
+  if ( !str_begins( buf, "TotalViews " ) )
+  {
+    log_string( "lyphviews.dat does not appear to have the expected format (no initial TotalViews line)--no lyph views loaded" );
+    init_default_lyphviews();
+    fclose(fp);
+    return;
+  }
+
+  bptr = &buf[strlen("TotalViews ")];
+
+  cnt = strtol( bptr, NULL, 10 );
+
+  if ( cnt < 1 )
+  {
+    log_string( "lyphviews.dat: total number of lyph views is not a positive integer--no lyphviews loaded" );
+    init_default_lyphviews();
+    fclose(fp);
+    return;
+  }  
+
+  viewcount = cnt;
+
+  CREATE( views, lyphview *, cnt + 2 );
+
+  for ( cnt = 0; cnt < viewcount+1; cnt++ )
+    views[cnt] = &obsolete_lyphview;
+
+  views[cnt+1] = NULL;
+
+  for ( ; ; )
+  {
+    QUICK_GETLINE( buf, bptr, c, fp );
+    line++;
+
+    if ( !bptr )
+      break;
+
+    if ( str_begins( buf, "View " ) )
+    {
+      id = strtol( &buf[strlen("View ")], NULL, 10 );
+
+      if ( id < 1 )
+      {
+        log_string( "lyphviews.dat: view id is not a positive integer -- aborting" );
+        log_linenum( line );
+        exit(0);
+      }
+
+      if ( id > viewcount )
+      {
+        log_string( "lyphviews.dat: view id is higher than number of views -- aborting" );
+        log_linenum( line );
+        exit(0);
+      }
+
+      if ( prev_view_index != -1 )
+      {
+        if ( !views[prev_view_index]->nodes )
+        {
+          log_string( "lyphviews.dat: previous view did not finish loading -- aborting" );
+          log_linenum( line );
+          exit(0);
+        }
+
+        *nodes = NULL;
+        *coords = NULL;
+      }
+
+      prev_view_index = id;
+
+      CREATE( v, lyphview, 1 );
+      v->id = id;
+      v->nodes = NULL;
+      v->coords = NULL;
+
+      views[id] = v;
+      continue;
+    }
+
+    if ( str_begins( buf, "Nodes " ) )
+    {
+      int ncnt;
+
+      if ( prev_view_index == -1 )
+      {
+        log_string( "lyphviews.dat: Mismatched Nodes line -- aborting" );
+        log_linenum( line );
+        abort();
+      }
+
+      ncnt = strtol( &buf[strlen("Nodes ")], NULL, 10 );
+
+      if ( ncnt < 0 )
+      {
+        log_string( "lyphviews.dat: Number of nodes is not a nonnegative integer -- aborting" );
+        log_linenum( line );
+        abort();
+      }
+
+      CREATE( views[id]->nodes, lyphnode *, ncnt + 1 );
+      CREATE( views[id]->coords, char *, (ncnt * 2) + 1 );
+      nodes = views[id]->nodes;
+      coords = views[id]->coords;
+
+      continue;
+    }
+
+    if ( str_begins( buf, "N " ) )
+    {
+      char *left, *ptr;
+      int fNodeID = 0, fXCoord = 0, fYCoord = 0, fEnd = 0;
+
+      if ( prev_view_index == -1 || !views[id]->nodes )
+      {
+        log_string( "lyphviews.dat: Mismatched N line -- aborting" );
+        log_linenum( line );
+        abort();
+      }
+
+      left = &buf[strlen("N ")];
+
+      for ( ptr = left; !fEnd; ptr++ )
+      {
+        if ( !*ptr || *ptr == ' ' )
+        {
+          if ( *ptr )
+            *ptr = '\0';
+          else
+            fEnd = 1;
+
+          if ( !fNodeID )
+          {
+            lyphnode *node;
+
+            fNodeID = 1;
+            node = lyphnode_by_id( left );
+
+            if ( !node )
+            {
+              log_string( "lyphviews.dat: Specified lyphnode does not exist -- aborting" );
+              log_linenum( line );
+              abort();
+            }
+
+            *nodes++ = node;
+          }
+          else if ( !fXCoord )
+          {
+            *coords++ = strdup( left );
+            fXCoord = 1;
+          }
+          else if ( !fYCoord )
+          {
+            *coords++ = strdup( left );
+            fYCoord = 1;
+          }
+          else
+          {
+            log_string( "lyphviews.dat: too many entries on line -- aborting" );
+            log_linenum( line );
+            abort();
+          }
+
+          left = &ptr[1];
+        }
+      }
+
+      continue;
+    }
+
+    log_string( "lyphviews.dat: Unrecognized line -- aborting" );
+    log_linenum( line );
+    abort();
+  }
+
+  if ( prev_view_index != -1 )
+  {
+    if ( !views[prev_view_index]->nodes )
+    {
+      log_string( "lyphviews.dat: previous view did not finish loading -- aborting" );
+      log_linenum( line );
+      exit(0);
+    }
+
+    *nodes = NULL;
+    *coords = NULL;
+  }
+
+  fclose(fp);
+}
 
 int load_lyphedges( void )
 {

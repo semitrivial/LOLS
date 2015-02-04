@@ -19,6 +19,7 @@
 #define MAX_URL_PARAMS 32
 #define MAX_URL_PARAM_LEN 512
 #define MAX_LYPHEDGE_LINE_LEN (MAX_IRI_LEN * 3)
+#define MAX_INT_LEN (strlen("-2147483647"))
 
 /*
  * Typedefs
@@ -35,6 +36,7 @@ typedef struct LYPHNODE lyphnode;
 typedef struct LYPHEDGE lyphedge;
 typedef struct EXIT_DATA exit_data;
 typedef struct LYPHSTEP lyphstep;
+typedef struct LYPHVIEW lyphview;
 
 /*
  * Structures
@@ -142,6 +144,13 @@ struct LYPHSTEP
   lyphedge *edge;
 };
 
+struct LYPHVIEW
+{
+  int id;
+  lyphnode **nodes;
+  char **coords;
+};
+
 struct LOAD_LAYERS_DATA
 {
   lyph *subj;
@@ -235,6 +244,7 @@ lyph *lyph_by_name( char *name );
 lyph *lyph_by_id( char *id );
 char *lyph_to_json( lyph *L );
 char *layer_to_json( layer *lyr );
+lyphview *lyphview_by_id( char *idstr );
 char *lyphnode_to_json( lyphnode *n, int include_exits );
 char *lyphedge_to_json( lyphedge *e );
 char *lyphpath_to_json( lyphedge **path );
@@ -275,3 +285,8 @@ int parse_lyph_type_str( char *type );
 void add_exit( lyphedge *e, lyphnode *n );
 lyphedge **compute_lyphpath( lyphnode *from, lyphnode *to );
 void free_lyphsteps( lyphstep *head );
+void save_lyphviews( void );
+void load_lyphviews( void );
+char *lyphview_to_json( lyphview *v );
+lyphview *search_duplicate_view( lyphnode **nodes, char **coords );
+lyphview *create_new_view( lyphnode **nodes, char **coords );

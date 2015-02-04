@@ -209,6 +209,14 @@ void main_loop( void )
         continue;
       }
 
+      if ( !strcmp( reqtype, "makeview" ) )
+      {
+        handle_makeview_request( req, params );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
       if ( !strcmp( reqtype, "lyphpath" ) )
       {
         handle_lyphpath_request( req, params );
@@ -252,6 +260,13 @@ void main_loop( void )
       if ( !strcmp( reqtype, "lyphnode" ) )
       {
         handle_lyphnode_request( request, req );
+        free( request );
+        continue;
+      }
+
+      if ( !strcmp( reqtype, "lyphview" ) )
+      {
+        handle_lyphview_request( request, req );
         free( request );
         continue;
       }
@@ -896,6 +911,103 @@ const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, http_requ
   }
 }
 
+void handle_makeview_request( http_request *req, url_param **params )
+{
+  lyphnode **nodes, **nptr;
+  char **coords, **cptr, key[1024];
+  url_param **p;
+  int param_cnt, i;
+  lyphview *v;
+
+  for ( p = params; *p; p++ )
+    ;
+
+  param_cnt = p - params;
+
+  if ( !param_cnt )
+  {
+    send_200_response( req, "{\"Error\": \"You did not specify the nodes and their coordinates\"}" );
+    return;
+  }
+
+  CREATE( nodes, lyphnode *, param_cnt + 1 );
+  CREATE( coords, char *, param_cnt + 1 );
+  nptr = nodes;
+  cptr = coords;
+
+  for ( i = 1; i <= param_cnt; i++ )
+  {
+    char *nodeid, *x, *y;
+    lyphnode *node;
+
+    sprintf( key, "node%d", i );
+    nodeid = get_url_param( params, key );
+
+    if ( !nodeid )
+      break;
+
+    sprintf( key, "x%d", i );
+    x = get_url_param( params, key );
+
+    if ( !x )
+    {
+      handle_makeview_request_unspecd_coords:
+      send_200_response( req, "{\"Error\": \"You did not specify x- and y-coordinates for all the indicated nodes\"}" );
+      free( nodes );
+      free( coords );
+      return;
+    }
+
+    sprintf( key, "y%d", i );
+    y = get_url_param( params, key );
+
+    if ( !y )
+      goto handle_makeview_request_unspecd_coords;
+
+    node = lyphnode_by_id( nodeid );
+
+    if ( !node )
+    {
+      char *errbuf = malloc( strlen(nodeid) + 1024 );
+      sprintf( errbuf, "{\"Error\": \"Node '%s' was not found in the database\"}", nodeid );
+      send_200_response( req, errbuf );
+      free( errbuf );
+      free( nodes );
+      free( coords );
+      return;
+    }
+
+    *nptr++ = node;
+    cptr[0] = x;
+    cptr[1] = y;
+    cptr = &cptr[2];
+  }
+
+  *cptr = NULL;
+  *nptr = NULL;
+
+  v = search_duplicate_view( nodes, coords );
+
+  if ( v )
+  {
+    free( nodes );
+    free( coords );
+
+    send_200_response( req, pretty_free( lyphview_to_json( v ) ) );
+    return;
+  }
+
+  v = create_new_view( nodes, coords );
+
+  if ( !v )
+    send_200_response( req, "{\"Error\": \"Could not create the view (out of memory?)\"}" );
+  else
+    send_200_response( req, pretty_free( lyphview_to_json( v ) ) );
+
+  free( coords );
+  free( nodes );
+}
+
 void handle_makelayer_request( http_request *req, url_param **params )
 {
   char *mtid, *color, *thickstr;
@@ -1056,6 +1168,19 @@ void handle_lyphnode_request( char *request, http_request *req )
   }
 
   send_200_response( req, pretty_free( lyphnode_to_json( n, 1 ) ) );
+}
+
+void handle_lyphview_request( char *request, http_request *req )
+{
+  lyphview *v = lyphview_by_id( request );
+
+  if ( !v )
+  {
+    send_200_response( req, "{\"Error\": \"No lyphview by that id\"}" );
+    return;
+  }
+
+  send_200_response( req, pretty_free( lyphview_to_json( v ) ) );
 }
 
 void handle_layer_request( char *request, http_request *req )
