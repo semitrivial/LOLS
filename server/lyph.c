@@ -12,7 +12,7 @@ trie *blank_nodes;
 
 lyphview **views;
 lyphview obsolete_lyphview;
-int viewcount;
+int top_view;
 
 lyphview *create_new_view( lyphnode **nodes, char **coords )
 {
@@ -41,11 +41,11 @@ lyphview *create_new_view( lyphnode **nodes, char **coords )
   v->coords = coords_out;
   v->id = new_lyphview_id();
 
-  CREATE( vbuf, lyphview *, viewcount + 2 );
-  memcpy( vbuf, views, viewcount * sizeof(lyphview *) );
-  vbuf[viewcount] = v;
-  vbuf[viewcount+1] = NULL;
-  viewcount++;
+  CREATE( vbuf, lyphview *, top_view + 3 );
+  memcpy( vbuf, views, (top_view + 1) * sizeof(lyphview *) );
+  vbuf[top_view + 1] = v;
+  vbuf[top_view + 2] = NULL;
+  top_view++;
   free( views );
   views = vbuf;
 
@@ -56,7 +56,7 @@ lyphview *create_new_view( lyphnode **nodes, char **coords )
 
 int new_lyphview_id(void)
 {
-  return viewcount+1;
+  return top_view+1;
 }
 
 lyphview *search_duplicate_view( lyphnode **nodes, char **coords )
@@ -102,7 +102,7 @@ lyphview *lyphview_by_id( char *idstr )
 {
   int id = strtol( idstr, NULL, 10 );
 
-  if ( id < 0 || id > viewcount )
+  if ( id < 0 || id > top_view )
     return NULL;
 
   if ( views[id] == &obsolete_lyphview )
@@ -178,12 +178,12 @@ void save_lyphviews( void )
     return;
   }
 
-  for ( ptr = views; *ptr; ptr++ )
+  for ( ptr = &views[1]; *ptr; ptr++ )
     ;
 
-  fprintf( fp, "TotalViews %ld\n", ptr - views );
+  fprintf( fp, "TopView %ld\n", ptr - views );
 
-  for ( ptr = views; *ptr; ptr++ )
+  for ( ptr = &views[1]; *ptr; ptr++ )
   {
     if ( *ptr != &obsolete_lyphview )
       save_one_lyphview( *ptr, fp );
@@ -213,7 +213,7 @@ void save_one_lyphview( lyphview *v, FILE *fp )
 
 void init_default_lyphviews( void )
 {
-  viewcount = 0;
+  top_view = 0;
 
   CREATE( views, lyphview *, 1 );
 
@@ -254,34 +254,34 @@ void load_lyphviews( void )
     return;
   }
 
-  if ( !str_begins( buf, "TotalViews " ) )
+  if ( !str_begins( buf, "TopView " ) )
   {
-    log_string( "lyphviews.dat does not appear to have the expected format (no initial TotalViews line)--no lyph views loaded" );
+    log_string( "lyphviews.dat does not appear to have the expected format (no initial TopView line)--no lyph views loaded" );
     init_default_lyphviews();
     fclose(fp);
     return;
   }
 
-  bptr = &buf[strlen("TotalViews ")];
+  bptr = &buf[strlen("TopView ")];
 
   cnt = strtol( bptr, NULL, 10 );
 
   if ( cnt < 1 )
   {
-    log_string( "lyphviews.dat: total number of lyph views is not a positive integer--no lyphviews loaded" );
+    log_string( "lyphviews.dat: top_view is not a positive integer--no lyphviews loaded" );
     init_default_lyphviews();
     fclose(fp);
     return;
   }  
 
-  viewcount = cnt;
+  top_view = cnt;
 
   CREATE( views, lyphview *, cnt + 2 );
 
-  for ( cnt = 0; cnt < viewcount+1; cnt++ )
+  for ( cnt = 0; cnt <= top_view; cnt++ )
     views[cnt] = &obsolete_lyphview;
 
-  views[cnt+1] = NULL;
+  views[cnt] = NULL;
 
   for ( ; ; )
   {
@@ -302,9 +302,9 @@ void load_lyphviews( void )
         exit(0);
       }
 
-      if ( id > viewcount )
+      if ( id > top_view )
       {
-        log_string( "lyphviews.dat: view id is higher than number of views -- aborting" );
+        log_string( "lyphviews.dat: view id is higher than top_view -- aborting" );
         log_linenum( line );
         exit(0);
       }
