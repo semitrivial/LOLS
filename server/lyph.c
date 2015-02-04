@@ -181,7 +181,7 @@ void save_lyphviews( void )
   for ( ptr = &views[1]; *ptr; ptr++ )
     ;
 
-  fprintf( fp, "TopView %ld\n", ptr - views );
+  fprintf( fp, "TopView %d\n", (int) (ptr - views) );
 
   for ( ptr = &views[1]; *ptr; ptr++ )
   {
@@ -202,7 +202,7 @@ void save_one_lyphview( lyphview *v, FILE *fp )
   for ( n = v->nodes; *n; n++ )
     ;
 
-  fprintf( fp, "Nodes %ld\n", n - v->nodes );
+  fprintf( fp, "Nodes %d\n", (int) (n - v->nodes) );
 
   for ( n = v->nodes, c = v->coords; *n; n++ )
   {
