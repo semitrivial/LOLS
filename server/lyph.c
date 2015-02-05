@@ -5,6 +5,7 @@ char *lyph_type_as_char( lyph *L );
 void save_one_lyphview( lyphview *v, FILE *fp );
 int is_duplicate_view( lyphview *v, lyphnode **nodes, char **coords );
 int new_lyphview_id(void);
+trie *parse_lyphedge_name_field( char *namebuf, lyphedge *e );
 
 int top_layer_id;
 int top_lyph_id;
@@ -603,15 +604,50 @@ int load_lyphedges_one_line( char *line, char **err )
   else
     to = (lyphnode *)totr->data;
 
-  e->name = trie_strdup( namebuf, lyphedge_names );
+  e->lyph = NULL;
+  e->name = parse_lyphedge_name_field( namebuf, e );
 
   e->from = from;
   e->to = to;
-  e->lyph = NULL;
 
   add_exit( e, from );
 
   return 1;
+}
+
+trie *parse_lyphedge_name_field( char *namebuf, lyphedge *e )
+{
+  if ( str_begins( namebuf, "lyph:" ) )
+  {
+    char *ptr;
+    int fSpace = 0;
+
+    namebuf = &namebuf[strlen("lyph:")];
+
+    for ( ptr = namebuf; *ptr; ptr++ )
+    {
+      if ( *ptr == ' ' )
+      {
+        lyph *L;
+
+        *ptr = '\0';
+        L = lyph_by_id( namebuf );
+
+        if ( !L )
+          return NULL;
+
+        e->lyph = L;
+        namebuf = &ptr[1];
+        fSpace = 1;
+        break;
+      }
+    }
+
+    if ( !fSpace )
+      return NULL;
+  }
+
+  return trie_strdup( namebuf, lyphedge_names );
 }
 
 void add_exit( lyphedge *e, lyphnode *n )
@@ -1604,7 +1640,7 @@ char *lyphedge_to_json( lyphedge *e )
 
   CREATE( json, char, len+1 );
 
-  sprintf( json, "{\"id\": \"%s\", \"fma\": \"%s\", \"name\": \"%s\", \"type\": \"%d\", \"from\": %s, \"to\": %s, \"au\": %s}", id, fma, name, e->type, from, to, au );
+  sprintf( json, "{\"id\": \"%s\", \"fma\": \"%s\", \"name\": \"%s\", \"type\": \"%d\", \"from\": %s, \"to\": %s, \"lyph\": %s}", id, fma, name, e->type, from, to, au );
 
   free( id );
   free( fma );
