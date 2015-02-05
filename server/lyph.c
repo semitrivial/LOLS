@@ -5,10 +5,15 @@ char *lyph_type_as_char( lyph *L );
 void save_one_lyphview( lyphview *v, FILE *fp );
 int is_duplicate_view( lyphview *v, lyphnode **nodes, char **coords );
 int new_lyphview_id(void);
+trie *new_lyphedge_id(lyphedge *e);
 trie *parse_lyphedge_name_field( char *namebuf, lyphedge *e );
+lyphedge *find_duplicate_lyphedge( int type, lyphnode *from, lyphnode *to, lyph *L, trie *fma, char *namestr );
+lyphedge *find_duplicate_lyphedge_recurse( trie *t, int type, lyphnode *from, lyphnode *to, lyph *L, trie *fma, trie *name );
+
 
 int top_layer_id;
 int top_lyph_id;
+int top_lyphedge_id;
 trie *blank_nodes;
 
 lyphview **views;
@@ -520,6 +525,47 @@ int load_lyphedges( void )
   return 1;
 }
 
+void save_lyphedges( void )
+{
+  FILE *fp = fopen( "lyphedges.dat", "w" );
+
+  if ( !fp )
+  {
+    log_string( "Could not open lyphedges.dat for writing" );
+    return;
+  }
+
+  save_lyphedges_recurse( lyphedge_ids, fp );
+
+  fclose( fp );
+}
+
+void save_lyphedges_recurse( trie *t, FILE *fp )
+{
+  if ( t->data )
+  {
+    lyphedge *e = (lyphedge *)t->data;
+
+    fprintf( fp, "%s\t", trie_to_static( e->id ) );
+    fprintf( fp, "%d\t%s\t", e->type, e->fma ? trie_to_static( e->fma ) : "(nofma)" );
+    fprintf( fp, "%s\t", trie_to_static( e->from->id ) );
+    fprintf( fp, "%s\t", trie_to_static( e->to->id ) );
+
+    if ( e->lyph )
+      fprintf( fp, "lyph:%s ", trie_to_static( e->lyph->id ) );
+
+    fprintf( fp, "%s\n", e->name ? trie_to_static( e->name ) : "(noname)" );
+  }
+
+  if ( t->children )
+  {
+    trie **child;
+
+    for ( child = t->children; *child; child++ )
+      save_lyphedges_recurse( *child, fp );
+  }
+}
+
 int load_lyphedges_one_line( char *line, char **err )
 {
   char edgeidbuf[MAX_LYPHEDGE_LINE_LEN+1];
@@ -557,9 +603,15 @@ int load_lyphedges_one_line( char *line, char **err )
 
   if ( !etr->data )
   {
+    int id_int;
+
     CREATE( e, lyphedge, 1 );
     e->id = etr;
     etr->data = (trie **)e;
+
+    id_int = strtol( edgeidbuf, NULL, 10 );
+    if ( id_int > top_lyphedge_id )
+      top_lyphedge_id = id_int;
   }
   else
     e = (lyphedge *)etr->data;
@@ -572,7 +624,7 @@ int load_lyphedges_one_line( char *line, char **err )
     return 0;
   }
 
-  e->fma = trie_strdup( fmabuf, lyphedge_fmas );
+  e->fma = strcmp( fmabuf, "(nofma)" ) ? trie_strdup( fmabuf, lyphedge_fmas ) : NULL;
 
   fromtr = trie_strdup( frombuf, lyphnode_ids );
 
@@ -646,6 +698,9 @@ trie *parse_lyphedge_name_field( char *namebuf, lyphedge *e )
     if ( !fSpace )
       return NULL;
   }
+
+  if ( !strcmp( namebuf, "(noname)" ) )
+    return NULL;
 
   return trie_strdup( namebuf, lyphedge_names );
 }
@@ -1615,32 +1670,19 @@ char *lyphedge_to_json( lyphedge *e )
 {
   int len;
   char *id = json_escape( trie_to_static( e->id ) );
-  char *fma = json_escape( trie_to_static( e->fma ) );
-  char *name = json_escape( trie_to_static( e->name ) );
+  char *fma = trie_to_json( e->fma );
+  char *name = trie_to_json( e->name );
   char *from = lyphnode_to_json( e->from, 0 );
   char *to = lyphnode_to_json( e->to, 0 );
-  char *au;
+  char *au = e->lyph ? lyph_to_json( e->lyph ) : "null";
   char *json;
 
-  if ( e->lyph )
-  {
-    char *quoted;
-
-    au = json_escape( trie_to_static( e->lyph->id ) );
-    CREATE( quoted, char, strlen(au) + strlen( "\"\"" ) + 1 );
-    sprintf( quoted, "\"%s\"", au );
-    free( au );
-    au = quoted;
-  }
-  else
-    au = "null";
-
-  len = strlen( "{\"id\": \"\", \"fma\": \"\", \"name\": \"\", \"type\": \"\", \"from\": , \"to\": , \"lyph\": }" );
+  len = strlen( "{\"id\": \"\", \"fma\": , \"name\": , \"type\": \"\", \"from\": , \"to\": , \"lyph\": }" );
   len += strlen( id ) + strlen( fma ) + strlen( name ) + 1024 + strlen( from ) + strlen( to ) + strlen( au );
 
   CREATE( json, char, len+1 );
 
-  sprintf( json, "{\"id\": \"%s\", \"fma\": \"%s\", \"name\": \"%s\", \"type\": \"%d\", \"from\": %s, \"to\": %s, \"lyph\": %s}", id, fma, name, e->type, from, to, au );
+  sprintf( json, "{\"id\": \"%s\", \"fma\": %s, \"name\": %s, \"type\": \"%d\", \"from\": %s, \"to\": %s, \"lyph\": %s}", id, fma, name, e->type, from, to, au );
 
   free( id );
   free( fma );
@@ -1883,4 +1925,97 @@ void free_lyphsteps( lyphstep *head )
     REMOVE_BIT( step->location->flags, LYPHNODE_SEEN );
     free( step );
   }
+}
+
+lyphedge *make_lyphedge( int type, lyphnode *from, lyphnode *to, lyph *L, char *fmastr, char *namestr )
+{
+  trie *fma;
+  lyphedge *e;
+
+  fma = fmastr ? trie_strdup( fmastr, lyphedge_fmas ) : NULL;
+
+  e = find_duplicate_lyphedge( type, from, to, L, fma, namestr );
+
+  if ( e )
+    return e;
+
+  CREATE( e, lyphedge, 1 );
+
+  e->id = new_lyphedge_id(e);
+  e->name = namestr ? trie_strdup( namestr, lyphedge_names ) : NULL;
+  e->type = type;
+  e->from = from;
+  e->to = to;
+  e->lyph = L;
+  e->fma = fma;
+
+  add_exit( e, from );
+
+  save_lyphedges();
+
+  return e;
+}
+
+trie *new_lyphedge_id(lyphedge *e)
+{
+  trie *id;
+  char idstr[MAX_INT_LEN];
+
+  top_lyphedge_id++;
+
+  sprintf( idstr, "%d", top_lyphedge_id );
+
+  id = trie_strdup( idstr, lyphedge_ids );
+
+  id->data = (trie **)e;
+
+  return id;
+}
+
+lyphedge *find_duplicate_lyphedge( int type, lyphnode *from, lyphnode *to, lyph *L, trie *fma, char *namestr )
+{
+  trie *name;
+
+  if ( namestr )
+  {
+    name = trie_search( namestr, lyphedge_names );
+
+    if ( !name )
+      return NULL;
+  }
+  else
+    name = NULL;
+
+  return find_duplicate_lyphedge_recurse( lyphedge_ids, type, from, to, L, fma, name );
+}
+
+lyphedge *find_duplicate_lyphedge_recurse( trie *t, int type, lyphnode *from, lyphnode *to, lyph *L, trie *fma, trie *name )
+{
+  if ( t->data )
+  {
+    lyphedge *e = (lyphedge *)t->data;
+
+    if ( e->name == name
+    &&   e->type == type
+    &&   e->from == from
+    &&   e->to   == to
+    &&   e->lyph == L
+    &&   e->fma  == fma )
+      return e;
+  }
+
+  if ( t->children )
+  {
+    trie **child;
+
+    for ( child = t->children; *child; child++ )
+    {
+      lyphedge *e = find_duplicate_lyphedge_recurse( *child, type, from, to, L, fma, name );
+
+      if ( e )
+        return e;
+    }
+  }
+
+  return NULL;
 }

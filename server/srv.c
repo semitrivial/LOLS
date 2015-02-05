@@ -209,6 +209,14 @@ void main_loop( void )
         continue;
       }
 
+      if ( !strcmp( reqtype, "makelyphedge" ) )
+      {
+        handle_makelyphedge_request( req, params );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
       if ( !strcmp( reqtype, "makeview" ) )
       {
         handle_makeview_request( req, params );
@@ -909,6 +917,85 @@ const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, http_requ
 
     bptr++;
   }
+}
+
+void handle_makelyphedge_request( http_request *req, url_param **params )
+{
+  lyphnode *from, *to;
+  lyphedge *e;
+  lyph *L;
+  char *fmastr, *fromstr, *tostr, *namestr, *lyphstr, *typestr;
+  int type;
+
+  typestr = get_url_param( params, "type" );
+
+  if ( !typestr )
+  {
+    send_200_response( req, "{\"Error\": \"You did not specify a type\"}" );
+    return;
+  }
+
+  type = strtol( typestr, NULL, 10 );
+
+  if ( type < 1 || type > 4 )
+  {
+    send_200_response( req, "{\"Error\": \"type must be 1, 2, 3, or 4\"}" );
+    return;
+  }
+
+  fmastr = get_url_param( params, "fma" );
+
+  fromstr = get_url_param( params, "from" );
+  tostr = get_url_param( params, "to" );
+
+  if ( !fromstr || !tostr )
+  {
+    send_200_response( req, "{\"Error\": \"An edge requires a 'from' and a 'to' field\"}" );
+    return;
+  }
+
+  from = lyphnode_by_id( fromstr );
+
+  if ( !from )
+  {
+    send_200_response( req, "{\"Error\": \"The indicated 'from' node was not found\"}" );
+    return;
+  }
+
+  to = lyphnode_by_id( tostr );
+
+  if ( !to )
+  {
+    send_200_response( req, "{\"Error\": \"The indicated 'to' node was not found\"}" );
+    return;
+  }
+
+  namestr = get_url_param( params, "name" );
+
+  lyphstr = get_url_param( params, "lyph" );
+
+  if ( lyphstr )
+  {
+    L = lyph_by_id( lyphstr );
+
+    if ( !L )
+    {
+      send_200_response( req, "{\"Error\": \"The indicated lyph was not found\"}" );
+      return;
+    }
+  }
+  else
+    L = NULL;
+
+  e = make_lyphedge( type, from, to, L, fmastr, namestr );
+
+  if ( !e )
+  {
+    send_200_response( req, "{\"Error\": \"The lyphedge could not be created (out of memory?)\"}" );
+    return;
+  }
+
+  send_200_response( req, pretty_free( lyphedge_to_json( e ) ) );
 }
 
 void handle_makeview_request( http_request *req, url_param **params )
