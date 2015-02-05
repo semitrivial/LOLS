@@ -217,6 +217,14 @@ void main_loop( void )
         continue;
       }
 
+      if ( !strcmp( reqtype, "makelyphnode" ) )
+      {
+        handle_makelyphnode_request( req, params );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
       if ( !strcmp( reqtype, "makeview" ) )
       {
         handle_makeview_request( req, params );
@@ -919,6 +927,21 @@ const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, http_requ
   }
 }
 
+void handle_makelyphnode_request( http_request *req, url_param **params )
+{
+  lyphnode *n;
+
+  n = make_lyphnode();
+
+  if ( !n )
+  {
+    send_200_response( req, "{\"Error\": \"Could not create new lyphnode (out of memory?)\"}" );
+    return;
+  }
+
+  send_200_response( req, pretty_free( lyphnode_to_json( n, 1 ) ) );
+}
+
 void handle_makelyphedge_request( http_request *req, url_param **params )
 {
   lyphnode *from, *to;
@@ -954,7 +977,7 @@ void handle_makelyphedge_request( http_request *req, url_param **params )
     return;
   }
 
-  from = lyphnode_by_id( fromstr );
+  from = lyphnode_by_id_or_new( fromstr );
 
   if ( !from )
   {
@@ -962,7 +985,7 @@ void handle_makelyphedge_request( http_request *req, url_param **params )
     return;
   }
 
-  to = lyphnode_by_id( tostr );
+  to = lyphnode_by_id_or_new( tostr );
 
   if ( !to )
   {

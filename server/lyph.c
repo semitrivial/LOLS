@@ -6,14 +6,17 @@ void save_one_lyphview( lyphview *v, FILE *fp );
 int is_duplicate_view( lyphview *v, lyphnode **nodes, char **coords );
 int new_lyphview_id(void);
 trie *new_lyphedge_id(lyphedge *e);
+lyphnode *lyphnode_by_id_or_new( char *id );
 trie *parse_lyphedge_name_field( char *namebuf, lyphedge *e );
 lyphedge *find_duplicate_lyphedge( int type, lyphnode *from, lyphnode *to, lyph *L, trie *fma, char *namestr );
 lyphedge *find_duplicate_lyphedge_recurse( trie *t, int type, lyphnode *from, lyphnode *to, lyph *L, trie *fma, trie *name );
-
+void maybe_update_top_id( int *top, char *idstr );
+trie *new_lyphnode_id(lyphnode *n);
 
 int top_layer_id;
 int top_lyph_id;
 int top_lyphedge_id;
+int top_lyphnode_id;
 trie *blank_nodes;
 
 lyphview **views;
@@ -603,15 +606,11 @@ int load_lyphedges_one_line( char *line, char **err )
 
   if ( !etr->data )
   {
-    int id_int;
-
     CREATE( e, lyphedge, 1 );
     e->id = etr;
     etr->data = (trie **)e;
 
-    id_int = strtol( edgeidbuf, NULL, 10 );
-    if ( id_int > top_lyphedge_id )
-      top_lyphedge_id = id_int;
+    maybe_update_top_id( &top_lyphedge_id, edgeidbuf );
   }
   else
     e = (lyphedge *)etr->data;
@@ -637,6 +636,8 @@ int load_lyphedges_one_line( char *line, char **err )
     from->flags = 0;
     CREATE( from->exits, exit_data *, 1 );
     from->exits[0] = NULL;
+
+    maybe_update_top_id( &top_lyphnode_id, frombuf );
   }
   else
     from = (lyphnode *)fromtr->data;
@@ -652,6 +653,8 @@ int load_lyphedges_one_line( char *line, char **err )
     to->flags = 0;
     CREATE( to->exits, exit_data *, 1 );
     to->exits[0] = NULL;
+
+    maybe_update_top_id( &top_lyphnode_id, tobuf );
   }
   else
     to = (lyphnode *)totr->data;
@@ -1459,6 +1462,14 @@ lyphnode *lyphnode_by_id( char *id )
   return NULL;
 }
 
+lyphnode *lyphnode_by_id_or_new( char *id )
+{
+  if ( !strcmp( id, "new" ) )
+    return make_lyphnode();
+  else
+    return lyphnode_by_id( id );
+}
+
 lyphedge *lyphedge_by_id( char *id )
 {
   trie *t = trie_search( id, lyphedge_ids );
@@ -1927,6 +1938,37 @@ void free_lyphsteps( lyphstep *head )
   }
 }
 
+lyphnode *make_lyphnode( void )
+{
+  lyphnode *n;
+
+  CREATE( n, lyphnode, 1 );
+
+  n->id = new_lyphnode_id(n);
+  n->flags = 0;
+
+  CREATE( n->exits, exit_data *, 1 );
+  n->exits[0] = NULL;
+
+  return n;
+}
+
+trie *new_lyphnode_id(lyphnode *n)
+{
+  trie *id;
+  char idstr[MAX_INT_LEN+1];
+
+  top_lyphnode_id++;
+
+  sprintf( idstr, "%d", top_lyphnode_id );
+
+  id = trie_strdup( idstr, lyphnode_ids );
+
+  id->data = (trie **)n;
+
+  return id;
+}
+
 lyphedge *make_lyphedge( int type, lyphnode *from, lyphnode *to, lyph *L, char *fmastr, char *namestr )
 {
   trie *fma;
@@ -1959,7 +2001,7 @@ lyphedge *make_lyphedge( int type, lyphnode *from, lyphnode *to, lyph *L, char *
 trie *new_lyphedge_id(lyphedge *e)
 {
   trie *id;
-  char idstr[MAX_INT_LEN];
+  char idstr[MAX_INT_LEN+1];
 
   top_lyphedge_id++;
 
@@ -2018,4 +2060,12 @@ lyphedge *find_duplicate_lyphedge_recurse( trie *t, int type, lyphnode *from, ly
   }
 
   return NULL;
+}
+
+void maybe_update_top_id( int *top, char *idstr )
+{
+  int id = strtol( idstr, NULL, 10 );
+
+  if ( id > *top )
+    *top = id;
 }

@@ -122,6 +122,7 @@ void handle_ucl_syntax_request( char *request, http_request *req );
 void handle_makelayer_request( http_request *req, url_param **params );
 void handle_makelyph_request( http_request *req, url_param **params );
 void handle_makeview_request( http_request *req, url_param **params );
+void handle_makelyphnode_request( http_request *req, url_param **params );
 void handle_makelyphedge_request( http_request *req, url_param **params );
 void handle_lyph_request( char *request, http_request *req );
 void handle_layer_request( char *request, http_request *req );
