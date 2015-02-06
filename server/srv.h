@@ -38,6 +38,43 @@
 #define HTTP_SOCKSTATE_AWAITING_INSTRUCTIONS 2
 
 /*
+ * Macros
+ */
+
+#define HND_ERR_NORETURN( x )\
+do\
+{\
+  char *__lols_errmsg, *__jsonfmt_escaped;\
+  static int overhead_len = 13 /* = strlen( "{\"Error\": \"\"}" ) */;\
+  \
+  __jsonfmt_escaped = json_escape(x);\
+  \
+  if ( __jsonfmt_escaped )\
+  {\
+    CREATE( __lols_errmsg, char, strlen(__jsonfmt_escaped) + overhead_len + 1 );\
+    sprintf( __lols_errmsg, "{\"Error\": \"%s\"}", __jsonfmt_escaped );\
+    free( __jsonfmt_escaped );\
+  }\
+  else\
+  {\
+    CREATE( __lols_errmsg, char, strlen(x) + overhead_len + 1 );\
+    sprintf( __lols_errmsg, "{\"Error\": \"%s\"}", x );\
+  }\
+  \
+  send_200_response( req, __lols_errmsg );\
+  free( __lols_errmsg );\
+}\
+while(0)
+
+#define HND_ERR( x )\
+do\
+{\
+  HND_ERR_NORETURN( x );\
+  return;\
+}\
+while(0)
+
+/*
  * Structures
  */
 typedef struct HTTP_REQUEST http_request;

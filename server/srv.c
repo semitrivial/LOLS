@@ -934,10 +934,7 @@ void handle_makelyphnode_request( http_request *req, url_param **params )
   n = make_lyphnode();
 
   if ( !n )
-  {
-    send_200_response( req, "{\"Error\": \"Could not create new lyphnode (out of memory?)\"}" );
-    return;
-  }
+    HND_ERR( "Could not create new lyphnode (out of memory?)" );
 
   send_200_response( req, pretty_free( lyphnode_to_json( n, 1 ) ) );
 }
@@ -953,18 +950,12 @@ void handle_makelyphedge_request( http_request *req, url_param **params )
   typestr = get_url_param( params, "type" );
 
   if ( !typestr )
-  {
-    send_200_response( req, "{\"Error\": \"You did not specify a type\"}" );
-    return;
-  }
+    HND_ERR( "You did not specify a type" );
 
   type = strtol( typestr, NULL, 10 );
 
   if ( type < 1 || type > 4 )
-  {
-    send_200_response( req, "{\"Error\": \"type must be 1, 2, 3, or 4\"}" );
-    return;
-  }
+    HND_ERR( "Type must be 1, 2, 3, or 4" );
 
   fmastr = get_url_param( params, "fma" );
 
@@ -972,26 +963,17 @@ void handle_makelyphedge_request( http_request *req, url_param **params )
   tostr = get_url_param( params, "to" );
 
   if ( !fromstr || !tostr )
-  {
-    send_200_response( req, "{\"Error\": \"An edge requires a 'from' and a 'to' field\"}" );
-    return;
-  }
+    HND_ERR( "An edge requires a 'from' and a 'to' field" );
 
   from = lyphnode_by_id_or_new( fromstr );
 
   if ( !from )
-  {
-    send_200_response( req, "{\"Error\": \"The indicated 'from' node was not found\"}" );
-    return;
-  }
+    HND_ERR( "The indicated 'from' node was not found" );
 
   to = lyphnode_by_id_or_new( tostr );
 
   if ( !to )
-  {
-    send_200_response( req, "{\"Error\": \"The indicated 'to' node was not found\"}" );
-    return;
-  }
+    HND_ERR( "The indicated 'to' node was not found" );
 
   namestr = get_url_param( params, "name" );
 
@@ -1002,10 +984,7 @@ void handle_makelyphedge_request( http_request *req, url_param **params )
     L = lyph_by_id( lyphstr );
 
     if ( !L )
-    {
-      send_200_response( req, "{\"Error\": \"The indicated lyph was not found\"}" );
-      return;
-    }
+      HND_ERR( "The indicated lyph was not found" );
   }
   else
     L = NULL;
@@ -1013,10 +992,7 @@ void handle_makelyphedge_request( http_request *req, url_param **params )
   e = make_lyphedge( type, from, to, L, fmastr, namestr );
 
   if ( !e )
-  {
-    send_200_response( req, "{\"Error\": \"The lyphedge could not be created (out of memory?)\"}" );
-    return;
-  }
+    HND_ERR( "The lyphedge could not be created (out of memory?)" );
 
   send_200_response( req, pretty_free( lyphedge_to_json( e ) ) );
 }
@@ -1035,10 +1011,7 @@ void handle_makeview_request( http_request *req, url_param **params )
   param_cnt = p - params;
 
   if ( !param_cnt )
-  {
-    send_200_response( req, "{\"Error\": \"You did not specify the nodes and their coordinates\"}" );
-    return;
-  }
+    HND_ERR( "You did not specify the nodes and their coordinates" );
 
   CREATE( nodes, lyphnode *, param_cnt + 1 );
   CREATE( coords, char *, param_cnt + 1 );
@@ -1062,10 +1035,10 @@ void handle_makeview_request( http_request *req, url_param **params )
     if ( !x )
     {
       handle_makeview_request_unspecd_coords:
-      send_200_response( req, "{\"Error\": \"You did not specify x- and y-coordinates for all the indicated nodes\"}" );
+
       free( nodes );
       free( coords );
-      return;
+      HND_ERR( "You did not specify x- and y-coordinates for all the indicated nodes" );
     }
 
     sprintf( key, "y%d", i );
@@ -1080,7 +1053,7 @@ void handle_makeview_request( http_request *req, url_param **params )
     {
       char *errbuf = malloc( strlen(nodeid) + 1024 );
       sprintf( errbuf, "{\"Error\": \"Node '%s' was not found in the database\"}", nodeid );
-      send_200_response( req, errbuf );
+      HND_ERR_NORETURN( errbuf );
       free( errbuf );
       free( nodes );
       free( coords );
@@ -1110,7 +1083,7 @@ void handle_makeview_request( http_request *req, url_param **params )
   v = create_new_view( nodes, coords );
 
   if ( !v )
-    send_200_response( req, "{\"Error\": \"Could not create the view (out of memory?)\"}" );
+    HND_ERR( "Could not create the view (out of memory?)" );
   else
     send_200_response( req, pretty_free( lyphview_to_json( v ) ) );
 
@@ -1127,10 +1100,7 @@ void handle_makelayer_request( http_request *req, url_param **params )
   mtid = get_url_param( params, "material" );
 
   if ( !mtid )
-  {
-    send_200_response( req, "{\"Error\": \"No material specified for layer\"}" );
-    return;
-  }
+    HND_ERR( "No material specified for layer" );
 
   color = get_url_param( params, "color" );
 
@@ -1144,10 +1114,7 @@ void handle_makelayer_request( http_request *req, url_param **params )
   lyr = layer_by_description( mtid, thickness, color );
 
   if ( !lyr )
-  {
-    send_200_response( req, "{\"Error\": \"Invalid material id specified for layer\"}" );
-    return;
-  }
+    HND_ERR( "Invalid material id specified for layer" );
 
   send_200_response( req, pretty_free( layer_to_json( lyr ) ) );
 }
@@ -1166,32 +1133,20 @@ void handle_makelyph_request( http_request *req, url_param **params )
   name = get_url_param( params, "name" );
 
   if ( !name )
-  {
-    send_200_response( req, "{\"Error\": \"No name specified for lyph\"}" );
-    return;
-  }
+    HND_ERR( "No name specified for lyph" );
 
   typestr = get_url_param( params, "type" );
 
   if ( !typestr )
-  {
-    send_200_response( req, "{\"Error\": \"No type specified for lyph\"}" );
-    return;
-  }
+    HND_ERR( "No type specified for lyph" );
 
   type = parse_lyph_type( typestr );
 
   if ( type == -1 )
-  {
-    send_200_response( req, "{\"Error\": \"Invalid type specified for lyph\"}" );
-    return;
-  }
+    HND_ERR( "Invalid type specified for lyph" );
 
   if ( type == LYPH_BASIC )
-  {
-    send_200_response( req, "{\"Error\": \"Only lyph types 'mix' and 'shell' are created by makelyph\"}" );
-    return;
-  }
+    HND_ERR( "Only lyph types 'mix' and 'shell' are created by makelyph" );
 
   lcnt = 1;
   lptr = lyrs;
@@ -1216,7 +1171,7 @@ void handle_makelyph_request( http_request *req, url_param **params )
       char *errmsg = malloc( strlen(lyrid) + 256 );
 
       sprintf( errmsg, "{\"Error\": \"No layer with id '%s'\"}", lyrid );
-      send_200_response( req, errmsg );
+      HND_ERR_NORETURN( errmsg );
 
       free( errmsg );
       return;
@@ -1231,10 +1186,7 @@ void handle_makelyph_request( http_request *req, url_param **params )
   L = lyph_by_layers( type, lyrs, name );
 
   if ( !L )
-  {
-    send_200_response( req, "{\"Error\": \"Could not create the desired lyph\"}" );
-    return;
-  }
+    HND_ERR( "Could not create the desired lyph" );
 
   send_200_response( req, pretty_free( lyph_to_json( L ) ) );
 }
@@ -1246,10 +1198,7 @@ void handle_lyph_request( char *request, http_request *req )
   L = lyph_by_id( request );
 
   if ( !L )
-  {
-    send_200_response( req, "{\"Error\": \"No lyph with that id\"}" );
-    return;
-  }
+    HND_ERR( "No lyph with that id" );
 
   send_200_response( req, pretty_free( lyph_to_json( L )  ) );
 }
@@ -1259,10 +1208,7 @@ void handle_lyphedge_request( char *request, http_request *req )
   lyphedge *e = lyphedge_by_id( request );
 
   if ( !e )
-  {
-    send_200_response( req, "{\"Error\": \"No lyphedge by that id\"}" );
-    return;
-  }
+    HND_ERR( "No lyphedge by that id" );
 
   send_200_response( req, pretty_free( lyphedge_to_json( e ) ) );
 }
@@ -1272,10 +1218,7 @@ void handle_lyphnode_request( char *request, http_request *req )
   lyphnode *n = lyphnode_by_id( request );
 
   if ( !n )
-  {
-    send_200_response( req, "{\"Error\": \"No lyphnode by that id\"}" );
-    return;
-  }
+    HND_ERR( "No lyphnode by that id" );
 
   send_200_response( req, pretty_free( lyphnode_to_json( n, 1 ) ) );
 }
@@ -1285,10 +1228,7 @@ void handle_lyphview_request( char *request, http_request *req )
   lyphview *v = lyphview_by_id( request );
 
   if ( !v )
-  {
-    send_200_response( req, "{\"Error\": \"No lyphview by that id\"}" );
-    return;
-  }
+    HND_ERR( "No lyphview by that id" );
 
   send_200_response( req, pretty_free( lyphview_to_json( v ) ) );
 }
@@ -1298,10 +1238,7 @@ void handle_layer_request( char *request, http_request *req )
   layer *lyr = layer_by_id( request );
 
   if ( !lyr )
-  {
-    send_200_response( req, "{\"Error\": \"No layer by that id\"}" );
-    return;
-  }
+    HND_ERR( "No layer by that id" );
 
   send_200_response( req, pretty_free( layer_to_json( lyr )  ) );
 }
@@ -1315,42 +1252,27 @@ void handle_lyphpath_request( http_request *req, url_param **params )
   fromstr = get_url_param( params, "from" );
 
   if ( !fromstr )
-  {
-    send_200_response( req, "{\"Error\": \"No 'from' parameter detected in your request\"}" );
-    return;
-  }
+    HND_ERR( "No 'from' parameter detected in your request" );
 
   from = lyphnode_by_id( fromstr );
 
   if ( !from )
-  {
-    send_200_response( req, "{\"Error\": \"The specified 'from' node was not found in the database\"}" );
-    return;
-  }
+    HND_ERR( "The specified 'from' node was not found in the database" );
 
   tostr = get_url_param( params, "to" );
 
   if ( !tostr )
-  {
-    send_200_response( req, "{\"Error\": \"No 'to' parameter detected in your request\"}" );
-    return;
-  }
+    HND_ERR( "No 'to' parameter detected in your request" );
 
   to = lyphnode_by_id( tostr );
 
   if ( !to )
-  {
-    send_200_response( req, "{\"Error\": \"The specified 'to' node was not found in the database\"}" );
-    return;
-  }
+    HND_ERR( "The specified 'to' node was not found in the database" );
 
   path = compute_lyphpath( from, to );
 
   if ( !path )
-  {
-    send_200_response( req, "{\"Error\": \"No path found\"}" );
-    return;
-  }
+    HND_ERR( "No path found" );
 
   send_200_response( req, pretty_free( lyphpath_to_json( path ) ) );
 
@@ -1367,20 +1289,13 @@ void handle_ucl_syntax_request( char *request, http_request *req )
 
   if ( !s )
   {
-    char *buf;
-
     if ( err )
     {
-      CREATE( buf, char, strlen( err ) + strlen( "{\"Error\": \"\"}" ) );
-      sprintf( buf, "{\"Error\": \"%s\"}", err );
-
-      send_200_response( req, buf );
-
-      free( buf );
+      HND_ERR_NORETURN( err );
       free( err );
     }
     else
-      send_200_response( req, "{\"Error\": \"Malformed UCL Syntax\"}" );
+      HND_ERR_NORETURN( "Malformed UCL Syntax" );
 
     if ( head )
       free_ambigs( head );
