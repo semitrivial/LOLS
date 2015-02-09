@@ -111,8 +111,13 @@ struct LYPHNODE
 
 typedef enum
 {
-  LYPHNODE_SEEN = 1
+  LYPHNODE_SEEN = 1, LYPHNODE_SELECTED = 2
 } lyphnode_flags;
+
+typedef enum
+{
+  LTJ_EXITS = 1, LTJ_SELECTIVE = 2
+} lyphnode_to_json_flags;
 
 struct LYPHEDGE
 {
@@ -253,7 +258,7 @@ lyph *lyph_by_id( char *id );
 char *lyph_to_json( lyph *L );
 char *layer_to_json( layer *lyr );
 lyphview *lyphview_by_id( char *idstr );
-char *lyphnode_to_json( lyphnode *n, int include_exits );
+char *lyphnode_to_json( lyphnode *n, int flags );
 char *lyphedge_to_json( lyphedge *e );
 char *lyphpath_to_json( lyphedge **path );
 char *exit_to_json( exit_data *x );

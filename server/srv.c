@@ -936,7 +936,7 @@ void handle_makelyphnode_request( http_request *req, url_param **params )
   if ( !n )
     HND_ERR( "Could not create new lyphnode (out of memory?)" );
 
-  send_200_response( req, pretty_free( lyphnode_to_json( n, 1 ) ) );
+  send_200_response( req, pretty_free( lyphnode_to_json( n, LTJ_EXITS ) ) );
 }
 
 void handle_makelyphedge_request( http_request *req, url_param **params )
@@ -1220,7 +1220,7 @@ void handle_lyphnode_request( char *request, http_request *req )
   if ( !n )
     HND_ERR( "No lyphnode by that id" );
 
-  send_200_response( req, pretty_free( lyphnode_to_json( n, 1 ) ) );
+  send_200_response( req, pretty_free( lyphnode_to_json( n, LTJ_EXITS ) ) );
 }
 
 void handle_lyphview_request( char *request, http_request *req )

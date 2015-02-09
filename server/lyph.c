@@ -129,7 +129,7 @@ char *lyphview_to_json( lyphview *v )
   len = strlen( "{\"id\": \"\", \"nodes\": []}" ) + MAX_INT_LEN;
 
   for ( n = v->nodes; *n; n++ )
-    ;
+    SET_BIT( (*n)->flags, LYPHNODE_SELECTED );
 
   cnt = n - v->nodes;
 
@@ -139,7 +139,7 @@ char *lyphview_to_json( lyphview *v )
   for ( n = v->nodes, coords = v->coords; *n; n++ )
   {
     len += strlen( "{\"node\": , \"x\": \"\", \"y\": \"\"}," );
-    *nodesjspt = lyphnode_to_json( *n, 1 );
+    *nodesjspt = lyphnode_to_json( *n, LTJ_EXITS | LTJ_SELECTIVE );
     len += strlen( *nodesjspt++ );
     len += strlen( *coords++ );
     len += strlen( *coords++ );
@@ -167,6 +167,9 @@ char *lyphview_to_json( lyphview *v )
   *jsonptr++ = '}';
   *jsonptr = '\0';
   free( nodesjs );
+
+  for ( n = v->nodes; *n; n++ )
+    REMOVE_BIT( (*n)->flags, LYPHNODE_SELECTED );
 
   return json;
 }
@@ -1590,29 +1593,36 @@ char *layer_to_json( layer *lyr )
   return buf;
 }
 
-char *lyphnode_to_json( lyphnode *n, int include_exits )
+char *lyphnode_to_json( lyphnode *n, int flags )
 {
   int len;
   char *id = json_escape( trie_to_static( n->id ) );
   char **xjson;
   char *buf, *bptr;
 
-  len = strlen( "{\"id\": \"\", \"flags\": \"\", \"exits\": []}" );
+  len = strlen( "{\"id\": \"\", \"exits\": []}" );
 
   len = len + strlen(id) + 1024;
 
-  if ( include_exits )
+  if ( IS_SET( flags, LTJ_EXITS ) )
   {
     char **xjsptr;
     exit_data **x;
+    int cnt = 0;
 
     for ( x = n->exits; *x; x++ )
-      ;
+    {
+      if ( !IS_SET( flags, LTJ_EXITS ) || IS_SET( (*x)->to->flags, LYPHNODE_SELECTED ) )
+        cnt++;
+    }
 
     CREATE( xjson, char *, x - n->exits );
 
     for ( x = n->exits, xjsptr = xjson; *x; x++ )
     {
+      if ( IS_SET( flags, LTJ_EXITS ) && !IS_SET( (*x)->to->flags, LYPHNODE_SELECTED ) )
+        continue;
+
       *xjsptr = exit_to_json( *x );
       len += strlen( *xjsptr ) + strlen( "," );
       xjsptr++;
@@ -1621,11 +1631,11 @@ char *lyphnode_to_json( lyphnode *n, int include_exits )
 
   CREATE( buf, char, len+1 );
 
-  sprintf( buf, "{\"id\": \"%s\", \"flags\": \"%d\"", id, n->flags );
+  sprintf( buf, "{\"id\": \"%s\"", id );
   bptr = &buf[strlen(buf)];
   free( id );
 
-  if ( include_exits )
+  if ( IS_SET( flags, LTJ_EXITS ) )
   {
     char **xjsptr;
     exit_data **x;
@@ -1636,6 +1646,9 @@ char *lyphnode_to_json( lyphnode *n, int include_exits )
 
     for ( x = n->exits, xjsptr = xjson; *x; x++ )
     {
+      if ( IS_SET( flags, LTJ_SELECTIVE ) && !IS_SET( (*x)->to->flags, LYPHNODE_SELECTED ) )
+        continue;
+
       if ( fFirst )
         *bptr++ = ',';
       else
