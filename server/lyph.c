@@ -139,7 +139,7 @@ char *lyphview_to_json( lyphview *v )
   for ( n = v->nodes, coords = v->coords; *n; n++ )
   {
     len += strlen( "{\"node\": , \"x\": \"\", \"y\": \"\"}," );
-    *nodesjspt = lyphnode_to_json( *n, LTJ_EXITS | LTJ_SELECTIVE );
+    *nodesjspt = lyphnode_to_json( *n, LTJ_EXITS | LTJ_SELECTIVE | LTJ_FULL_EXIT_DATA );
     len += strlen( *nodesjspt++ );
     len += strlen( *coords++ );
     len += strlen( *coords++ );
@@ -1623,7 +1623,11 @@ char *lyphnode_to_json( lyphnode *n, int flags )
       if ( IS_SET( flags, LTJ_EXITS ) && !IS_SET( (*x)->to->flags, LYPHNODE_SELECTED ) )
         continue;
 
-      *xjsptr = exit_to_json( *x );
+      if ( IS_SET( flags, LTJ_FULL_EXIT_DATA ) )
+        *xjsptr = exit_to_json( *x, ETJ_FULL_EXIT_DATA );
+      else
+        *xjsptr = exit_to_json( *x, 0 );
+
       len += strlen( *xjsptr ) + strlen( "," );
       xjsptr++;
     }
@@ -1669,23 +1673,28 @@ char *lyphnode_to_json( lyphnode *n, int flags )
   return buf;
 }
 
-char *exit_to_json( exit_data *x )
+char *exit_to_json( exit_data *x, int flags )
 {
-  char *to_id = json_escape( trie_to_static( x->to->id ) );
-  char *via_id = json_escape( trie_to_static( x->via->id ) );
+  char *to_id = trie_to_json( x->to->id );
+  char *via;
   char *json;
   int len;
 
-  len = strlen( "{\"to\": \"\", \"via\": \"\"}" );
+  if ( IS_SET( flags, ETJ_FULL_EXIT_DATA ) )
+    via = lyphedge_to_json( x->via );
+  else
+    via = trie_to_json( x->via->id );
+
+  len = strlen( "{\"to\": , \"via\": }" );
   len += strlen( to_id );
-  len += strlen( via_id );
+  len += strlen( via );
 
   CREATE( json, char, len + 1 );
 
-  sprintf( json, "{\"to\": \"%s\", \"via\": \"%s\"}", to_id, via_id );
+  sprintf( json, "{\"to\": %s, \"via\": %s}", to_id, via );
 
   free( to_id );
-  free( via_id );
+  free( via );
 
   return json;
 }

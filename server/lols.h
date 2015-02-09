@@ -116,8 +116,13 @@ typedef enum
 
 typedef enum
 {
-  LTJ_EXITS = 1, LTJ_SELECTIVE = 2
+  LTJ_EXITS = 1, LTJ_SELECTIVE = 2, LTJ_FULL_EXIT_DATA = 4
 } lyphnode_to_json_flags;
+
+typedef enum
+{
+  ETJ_FULL_EXIT_DATA = 1
+} exit_to_json_flags;
 
 struct LYPHEDGE
 {
@@ -261,7 +266,7 @@ lyphview *lyphview_by_id( char *idstr );
 char *lyphnode_to_json( lyphnode *n, int flags );
 char *lyphedge_to_json( lyphedge *e );
 char *lyphpath_to_json( lyphedge **path );
-char *exit_to_json( exit_data *x );
+char *exit_to_json( exit_data *x, int flags );
 layer *layer_by_id( char *id );
 layer *layer_by_description( char *mtid, int thickness, char *color );
 layer *layer_by_description_recurse( const lyph *L, const float thickness, const char *color, const trie *t );
