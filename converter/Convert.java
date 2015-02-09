@@ -70,7 +70,7 @@ public class Convert
         for ( OWLAnnotation a : annots )
         {
           if ( a.getValue() instanceof OWLLiteral )
-            System.out.print( "<" + cID + "> <http://www.w3.org/2000/01/rdf-schema#label> \"" + ((OWLLiteral)a.getValue()).getLiteral().trim() + "\" .\n" );
+            System.out.print( cID + " <http://www.w3.org/2000/01/rdf-schema#label> \"" + ((OWLLiteral)a.getValue()).getLiteral().trim() + "\" .\n" );
         }
       }
     }
