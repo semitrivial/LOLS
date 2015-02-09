@@ -4,6 +4,7 @@
 
 #define ENABLE_LYPHS
 
+#include "mallocf.h"
 #include "macro.h"
 #include "jsonfmt.h"
 #include <stdlib.h>
@@ -24,6 +25,7 @@
 /*
  * Typedefs
  */
+typedef char * (*json_array_printer) (void *what, void *how);
 typedef struct TRIE trie;
 typedef struct TRIE_WRAPPER trie_wrapper;
 typedef struct UCL_SYNTAX ucl_syntax;
@@ -225,6 +227,11 @@ char *url_decode(char *str);
 int is_number( const char *arg );
 void error_message( char *err );
 char *pretty_free( char *json );
+char *strdupf( const char *fmt, ... );
+char *jsonf( int paircnt, ... );;
+char *jslist_r( json_array_printer *p, void **array, void *param );
+void json_gc( void );
+size_t voidlen( void **array );
 
 /*
  * ucl.c
