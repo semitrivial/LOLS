@@ -8,18 +8,6 @@
 char **html_codes;
 int *html_code_lengths;
 
-typedef struct JSON_GC_TARGET json_gc_target;
-
-struct JSON_GC_TARGET
-{
-  json_gc_target *next;
-  char *str;
-};
-
-char *prep_for_json_gc( char *x );
-
-json_gc_target *first_json_gc_target, *last_json_gc_target;
-
 void log_string( char *txt )
 {
   #ifdef LOLS_UNIX_CMDLINE
@@ -260,129 +248,12 @@ char *pretty_free( char *json )
   return pretty;
 }
 
-char *jsonf( int paircnt, ... )
-{
-  static char *fmt;
-  char *result, *closing;
-  va_list args;
-
-  assert( paircnt <= FOR_EACH_MAX_ARGS );
-
-  if ( !fmt )
-  {
-    fmt = strdup( "{%s:%s,%s:%s,%s:%s,%s:%s,%s:%s,%s:%s,%s:%s,%s:%s} " );
-
-    /*
-     * If FOR_EACH_MAX_ARGS is changed, then the number of
-     * "%s:%s"'s above must be changed accordingly
-     */
-    assert( strlen(fmt) == 2+(FOR_EACH_MAX_ARGS * strlen("%s:%s,")) );
-  }
-
-  /*
-   * Snip fmt to the appropriate size
-   */
-  closing = &fmt[ strlen("%s:%s,") * paircnt ];
-  closing[0] = '}';
-  closing[1] = '\0';
-
-  /*
-   * Delegate the hard work to vstrdupf
-   */
-  va_start( args, paircnt );
-  result = vstrdupf( fmt, args );
-  va_end( args );
-
-  /*
-   * Restore fmt to its original size
-   */
-  closing[0] = ',';
-  closing[1] = '%';
-
-  return prep_for_json_gc( result );
-}
-
-char *prep_for_json_gc( char *x )
-{
-  json_gc_target *t;
-
-  if ( !x )
-    return NULL;
-
-  CREATE( t, json_gc_target, 1 );
-  t->str = x;
-  LINK( t, first_json_gc_target, last_json_gc_target, next );
-
-  return x;
-}
-
-void json_gc( void )
-{
-  json_gc_target *t, *t_next;
-
-  for ( t = first_json_gc_target; t; t = t_next )
-  {
-    t_next = t->next;
-
-    free( t->str );
-    free( t );
-  }
-
-  first_json_gc_target = NULL;
-  last_json_gc_target = NULL;
-}
-
-char *jslist( json_array_printer *p, void **array )
-{
-  return jslist_r( p, array, NULL );
-}
-
-size_t voidlen( void **array )
+size_t voidlen( void **x )
 {
   void **ptr;
 
-  for ( ptr = array; *ptr; ptr++ )
+  for ( ptr = x; *ptr; ptr++ )
     ;
 
-  return ptr - array;
-}
-
-char *jslist_r( json_array_printer *p, void **array, void *param )
-{
-  char **jsons, **jsonsptr, *buf, *bptr;
-  void **ptr;
-  int len = strlen( "[]" ) - strlen( "," );
-  int fFirst = 0;
-
-  CREATE( jsons, char *, voidlen( array ) + 1 );
-
-  for ( ptr = array, jsonsptr = jsons; *ptr; ptr++ )
-  {
-    *jsonsptr = (*p)( *ptr, param );
-    len += strlen( *jsonsptr ) + strlen(",");
-    prep_for_json_gc( *jsonsptr );
-    jsonsptr++;
-  }
-
-  CREATE( buf, char, len + 1 );
-  bptr = buf;
-  *bptr++ = '[';
-
-  for ( ptr = array, jsonsptr = jsons; *ptr; ptr++ )
-  {
-    if ( fFirst )
-      *bptr++ = ',';
-    else
-      fFirst = 1;
-
-    sprintf( bptr, "%s", *jsonsptr++ );
-    bptr = &bptr[strlen(bptr)];
-  }
-
-  *bptr++ = ']';
-  *bptr = '\0';
-
-  free( jsons );
-
-  return prep_for_json_gc( buf );
+  return ptr - x;
 }

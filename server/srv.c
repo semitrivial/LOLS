@@ -9,6 +9,8 @@ char *js;
 char *lyphgui_html;
 char *lyphgui_js;
 
+extern int lyphnode_to_json_flags;
+
 int main( int argc, const char* argv[] )
 {
   FILE *fp;
@@ -367,6 +369,8 @@ void main_loop( void )
     else
       break;
   }
+
+  json_gc();
 }
 
 void http_update_connections( void )
@@ -936,7 +940,11 @@ void handle_makelyphnode_request( http_request *req, url_param **params )
   if ( !n )
     HND_ERR( "Could not create new lyphnode (out of memory?)" );
 
-  send_200_response( req, pretty_free( lyphnode_to_json( n, LTJ_EXITS ) ) );
+  lyphnode_to_json_flags = LTJ_EXITS;
+
+  send_200_response( req, lyphnode_to_json( n ) );
+
+  lyphnode_to_json_flags = 0;
 }
 
 void handle_makelyphedge_request( http_request *req, url_param **params )
@@ -994,7 +1002,7 @@ void handle_makelyphedge_request( http_request *req, url_param **params )
   if ( !e )
     HND_ERR( "The lyphedge could not be created (out of memory?)" );
 
-  send_200_response( req, pretty_free( lyphedge_to_json( e ) ) );
+  send_200_response( req, lyphedge_to_json( e ) );
 }
 
 void handle_makeview_request( http_request *req, url_param **params )
@@ -1076,7 +1084,7 @@ void handle_makeview_request( http_request *req, url_param **params )
     free( nodes );
     free( coords );
 
-    send_200_response( req, pretty_free( lyphview_to_json( v ) ) );
+    send_200_response( req, lyphview_to_json( v ) );
     return;
   }
 
@@ -1085,7 +1093,7 @@ void handle_makeview_request( http_request *req, url_param **params )
   if ( !v )
     HND_ERR( "Could not create the view (out of memory?)" );
   else
-    send_200_response( req, pretty_free( lyphview_to_json( v ) ) );
+    send_200_response( req, lyphview_to_json( v ) );
 
   free( coords );
   free( nodes );
@@ -1116,7 +1124,7 @@ void handle_makelayer_request( http_request *req, url_param **params )
   if ( !lyr )
     HND_ERR( "Invalid material id specified for layer" );
 
-  send_200_response( req, pretty_free( layer_to_json( lyr ) ) );
+  send_200_response( req, layer_to_json( lyr ) );
 }
 
 void handle_makelyph_request( http_request *req, url_param **params )
@@ -1188,7 +1196,7 @@ void handle_makelyph_request( http_request *req, url_param **params )
   if ( !L )
     HND_ERR( "Could not create the desired lyph" );
 
-  send_200_response( req, pretty_free( lyph_to_json( L ) ) );
+  send_200_response( req, lyph_to_json( L ) );
 }
 
 void handle_lyph_request( char *request, http_request *req )
@@ -1200,7 +1208,7 @@ void handle_lyph_request( char *request, http_request *req )
   if ( !L )
     HND_ERR( "No lyph with that id" );
 
-  send_200_response( req, pretty_free( lyph_to_json( L )  ) );
+  send_200_response( req, lyph_to_json( L ) );
 }
 
 void handle_lyphedge_request( char *request, http_request *req )
@@ -1210,7 +1218,7 @@ void handle_lyphedge_request( char *request, http_request *req )
   if ( !e )
     HND_ERR( "No lyphedge by that id" );
 
-  send_200_response( req, pretty_free( lyphedge_to_json( e ) ) );
+  send_200_response( req, lyphedge_to_json( e ) );
 }
 
 void handle_lyphnode_request( char *request, http_request *req )
@@ -1220,7 +1228,11 @@ void handle_lyphnode_request( char *request, http_request *req )
   if ( !n )
     HND_ERR( "No lyphnode by that id" );
 
-  send_200_response( req, pretty_free( lyphnode_to_json( n, LTJ_EXITS ) ) );
+  lyphnode_to_json_flags = LTJ_EXITS;
+
+  send_200_response( req, lyphnode_to_json( n ) );
+
+  lyphnode_to_json_flags = 0;
 }
 
 void handle_lyphview_request( char *request, http_request *req )
@@ -1230,7 +1242,7 @@ void handle_lyphview_request( char *request, http_request *req )
   if ( !v )
     HND_ERR( "No lyphview by that id" );
 
-  send_200_response( req, pretty_free( lyphview_to_json( v ) ) );
+  send_200_response( req, lyphview_to_json( v ) );
 }
 
 void handle_layer_request( char *request, http_request *req )
@@ -1240,7 +1252,7 @@ void handle_layer_request( char *request, http_request *req )
   if ( !lyr )
     HND_ERR( "No layer by that id" );
 
-  send_200_response( req, pretty_free( layer_to_json( lyr )  ) );
+  send_200_response( req, layer_to_json( lyr ) );
 }
 
 void handle_lyphpath_request( http_request *req, url_param **params )
@@ -1274,7 +1286,7 @@ void handle_lyphpath_request( http_request *req, url_param **params )
   if ( !path )
     HND_ERR( "No path found" );
 
-  send_200_response( req, pretty_free( lyphpath_to_json( path ) ) );
+  send_200_response( req, lyphpath_to_json( path ) );
 
   free( path );
 }

@@ -252,19 +252,7 @@ trie *trie_search( char *buf, trie *base )
 
 char *trie_to_json( trie *t )
 {
-  if ( t )
-  {
-    char *escaped = json_escape( trie_to_static( t ) ), *buf;
-
-    CREATE( buf, char, strlen(escaped) + strlen("\"\"") + 1 );
-
-    sprintf( buf, "\"%s\"", escaped );
-
-    free( escaped );
-    return buf;
-  }
-  else
-    return strdup( "null" );
+  return str_to_json( t ? trie_to_static( t ) : NULL );
 }
 
 char *trie_to_static( trie *t )

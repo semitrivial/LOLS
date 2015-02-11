@@ -19,7 +19,10 @@
  * add for each level of braces.  On error, returns NULL and
  * writes an error message to *errptr (if errptr != NULL).
  * (The error message is not malloc'd and doesn't need freed.)
- * On success, returns a malloc'd string.
+ * On success, returns the beautified json.
+ *
+ * Memory management: To free the strings output by json_format
+ * (and other functions in this library), call json_gc().
  */
 char *json_format( const char *json, int indents, char **errptr )
 {
@@ -331,16 +334,9 @@ char *json_format( const char *json, int indents, char **errptr )
    * Nul-terminate our buffer and return it.
    */
   *bptr = '\0';
-  return buf;
+  return prep_for_json_gc(buf);
 }
 
-/*
- *  Escape function: insert escape code \ before double-quotes and backslashes.
- *
- *  The return value is malloc'd, and should be free'd when no longer needed.
- *
- *  Returns NULL if there is insufficient memory.
- */
 char *json_escape( const char *txt )
 {
   int len;
@@ -379,6 +375,7 @@ char *json_escape( const char *txt )
   }
 
   *bptr = '\0';
+
   return buf;
 }
 
@@ -471,4 +468,232 @@ int last_nonspace_was_newline( char *ptr, char *buf )
 
     return 0;
   }
+}
+
+/*
+ * Experimental material follows
+ */
+json_str *first_js_str[JSON_HASH];
+json_str *last_js_str[JSON_HASH];
+
+int is_json( const char *str )
+{
+  json_str *x;
+  unsigned char hash = get_js_hash( str );
+
+  for ( x = first_js_str[hash]; x; x = x->next )
+    if ( x->str == str )
+      return 1;
+
+  return 0;
+}
+
+unsigned char get_js_hash( char const *str )
+{
+  while ( *str == '\"' || *str == '{' || *str == '[' )
+    str++;
+
+  return (unsigned char) *str;
+}
+
+char *prep_for_json_gc( char *str )
+{
+  json_str *x;
+  int hash;
+
+  x = malloc( sizeof( json_str ) );
+
+  if ( !x )
+    return NULL;
+
+  x->str = str;
+
+  hash = get_js_hash( str );
+
+  JSONFMT_LINK( x, first_js_str[hash], last_js_str[hash], next );
+
+  return str;
+}
+
+void json_gc( void )
+{
+  json_str *x, *x_next;
+  int hash;
+
+  for ( hash = 0; hash < JSON_HASH; hash++ )
+  {
+    for ( x = first_js_str[hash]; x; x = x_next )
+    {
+      x_next = x->next;
+
+      free( x->str );
+      free( x );
+    }
+    first_js_str[hash] = NULL;
+    last_js_str[hash] = NULL;
+  }
+}
+
+char *json_c_adapter( int paircnt, ... )
+{
+  va_list vargs;
+  char **args, **argspt, *ch, *buf, *bptr, *retval;
+  int i, len, rawcnt;
+
+  rawcnt = paircnt * 2;
+
+  if ( (args = malloc(sizeof(char*) * (1+rawcnt))) == NULL )
+    return NULL;
+
+  va_start( vargs, paircnt );
+
+  for ( i = 0, len = 0; i < rawcnt; i++ )
+  {
+    ch = va_arg( vargs, char * );
+
+    if ( is_json( ch ) )
+    {
+      args[i] = ch;
+      len += strlen( ch );
+    }
+    else
+    {
+      char *escaped = json_escape( ch );
+      args[i] = json_enquote( escaped );
+      free( escaped );
+      len += strlen( args[i] );
+    }
+  }
+  args[rawcnt] = NULL;
+
+  va_end( vargs );
+
+  len += strlen("{}") + ( strlen(":,") * paircnt ) - strlen(",");
+
+  if ( (buf = malloc(len+1)) == NULL )
+  {
+    free( args );
+    return NULL;
+  }
+
+  bptr = buf;
+  *bptr = '{';
+
+  for ( argspt = args; *argspt; argspt += 2 )
+  {
+    ++bptr;
+    strcpy( bptr, *argspt );
+    bptr = &bptr[strlen(bptr)];
+
+    *bptr++ = ':';
+
+    strcpy( bptr, argspt[1] );
+    bptr = &bptr[strlen(bptr)];
+    *bptr = ',';
+  }
+
+  *bptr = '}';
+  bptr[1] = '\0';
+
+  free( args );
+
+  retval = json_format( buf, 2, NULL );
+
+  if ( retval )
+  {
+    free( buf );
+    return retval;
+  }
+  else
+    return prep_for_json_gc( buf );
+}
+
+char *json_enquote( const char *str )
+{
+  char *buf = malloc( strlen(str) + strlen("\"\"") + 1 );
+
+  sprintf( buf, "\"%s\"", str );
+
+  return prep_for_json_gc( buf );
+}
+
+char *json_array_worker( char * (*fnc) (void *), void **array )
+{
+  char **results, **rptr, *buf, *bptr;
+  void **ptr;
+  int cnt, len;
+
+  for ( ptr = array; *ptr; ptr++ )
+    ;
+
+  cnt = ptr - array;
+
+  if ( !cnt )
+    return prep_for_json_gc( strdup( "[]" ) );
+
+  if ( (results = malloc( sizeof( char *) * (cnt+1) )) == NULL )
+    return NULL;
+
+  rptr = results;
+
+  for ( ptr = array, len = 0; *ptr; ptr++ )
+  {
+    if ( (*rptr = (*fnc) (*ptr) ) == NULL )
+    {
+      free( results );
+      return NULL;
+    }
+    len += strlen( *rptr );
+    rptr++;
+  }
+
+  *rptr = NULL;
+
+  len += strlen("[]") + ( strlen(",") * (cnt-1) );
+
+  if ( (buf = malloc( len + 1 )) == NULL )
+  {
+    free( results );
+    return NULL;
+  }
+
+  bptr = buf;
+  *bptr = '[';
+
+  for (rptr = results; *rptr; rptr++)
+  {
+    bptr++;
+    strcpy( bptr, *rptr );
+    bptr = &bptr[strlen(bptr)];
+    *bptr = ',';
+  }
+  bptr[0] = ']';
+  bptr[1] = '\0';
+
+  return prep_for_json_gc(buf);
+}
+
+char *str_to_json( char *x )
+{
+  if ( !x )
+    return prep_for_json_gc( strdup( "null" ) );
+
+  if ( is_json( x ) )
+    return x;
+  else
+  {
+    char *escaped = json_escape( x );
+    char *retval = json_enquote( escaped );
+    free( escaped );
+    return retval;
+  }
+}
+
+char *int_to_json( int x )
+{
+  char buf[256];
+
+  sprintf( buf, "%d", x );
+
+  return json_enquote( buf );
 }

@@ -23,6 +23,9 @@ lyphview **views;
 lyphview obsolete_lyphview;
 int top_view;
 
+int lyphnode_to_json_flags;
+int exit_to_json_flags;
+
 lyphview *create_new_view( lyphnode **nodes, char **coords )
 {
   lyphnode **inptr, **out;
@@ -122,56 +125,26 @@ lyphview *lyphview_by_id( char *idstr )
 
 char *lyphview_to_json( lyphview *v )
 {
-  int len, cnt, fFirst = 0;
   lyphnode **n;
-  char **nodesjs, **nodesjspt, **coords, *json, *jsonptr;
-
-  len = strlen( "{\"id\": \"\", \"nodes\": []}" ) + MAX_INT_LEN;
+  char *result;
 
   for ( n = v->nodes; *n; n++ )
     SET_BIT( (*n)->flags, LYPHNODE_SELECTED );
 
-  cnt = n - v->nodes;
+  lyphnode_to_json_flags = LTJ_EXITS | LTJ_SELECTIVE | LTJ_FULL_EXIT_DATA;
 
-  CREATE( nodesjs, char *, cnt + 1 );
-  nodesjspt = nodesjs;
+  result = JSON
+  (
+    "id": int_to_json( v->id ),
+    "nodes": JS_ARRAY( lyphnode_to_json, v->nodes )
+  );
 
-  for ( n = v->nodes, coords = v->coords; *n; n++ )
-  {
-    len += strlen( "{\"node\": , \"x\": \"\", \"y\": \"\"}," );
-    *nodesjspt = lyphnode_to_json( *n, LTJ_EXITS | LTJ_SELECTIVE | LTJ_FULL_EXIT_DATA );
-    len += strlen( *nodesjspt++ );
-    len += strlen( *coords++ );
-    len += strlen( *coords++ );
-  }
-
-  CREATE( json, char, len + 1 );
-
-  sprintf( json, "{\"id\": \"%d\", \"nodes\": [", v->id );
-  jsonptr = &json[strlen(json)];
-
-  for ( n = v->nodes, coords = v->coords, nodesjspt = nodesjs; *n; n++ )
-  {
-    if ( fFirst )
-      *jsonptr++ = ',';
-    else
-      fFirst = 1;
-
-    sprintf( jsonptr, "{\"node\": %s, \"x\": \"%s\", \"y\": \"%s\"}", *nodesjspt, coords[0], coords[1] );
-    free( *nodesjspt++ );
-    coords = &coords[2];
-    jsonptr = &jsonptr[strlen(jsonptr)];
-  }
-
-  *jsonptr++ = ']';
-  *jsonptr++ = '}';
-  *jsonptr = '\0';
-  free( nodesjs );
+  lyphnode_to_json_flags = 0;
 
   for ( n = v->nodes; *n; n++ )
     REMOVE_BIT( (*n)->flags, LYPHNODE_SELECTED );
 
-  return json;
+  return result;
 }
 
 void save_lyphviews( void )
@@ -1485,297 +1458,108 @@ lyphedge *lyphedge_by_id( char *id )
 
 char *lyph_to_json( lyph *L )
 {
-  int len;
-  char *id, *name, *type, *buf, *bptr;
-  char **layers;
-  layer **lptr;
-
-  id = json_escape( trie_to_static( L->id ) );
-  name = json_escape( trie_to_static( L->name ) );
-
-  len = strlen( "{\"id\": \"\", \"name\": \"\", \"type\": \"\", \"layers\": []}" );
-
-  len += strlen( id );
-  len += strlen( name );
-
-  type = lyph_type_as_char( L );
-  len += strlen( type );
-
-  if ( L->type != LYPH_BASIC )
-  {
-    int layercnt;
-    char **layerptr;
-
-    for ( lptr = L->layers; *lptr; lptr++ )
-      ;
-
-    layercnt = lptr - L->layers;
-
-    CREATE( layers, char *, layercnt + 1 );
-
-    for ( layerptr = layers, lptr = L->layers; *lptr; lptr++ )
-    {
-      *layerptr = layer_to_json( *lptr );
-      len += strlen( *layerptr ) + 1;
-      layerptr++;
-    }
-
-    *layerptr = NULL;
-  }
-
-  CREATE( buf, char, len + 1 );
-
-  sprintf( buf, "{\"id\": \"%s\", \"name\": \"%s\", \"type\": \"%s\", \"layers\": [", id, name, type );
-  bptr = &buf[strlen(buf)];
-
-  free( id );
-  free( name );
-
-  if ( L->type != LYPH_BASIC )
-  {
-    char **layerptr;
-    int fFirst = 0;
-
-    for ( layerptr = layers; *layerptr; layerptr++ )
-    {
-      if ( fFirst )
-        *bptr++ = ',';
-      else
-        fFirst = 1;
-
-      sprintf( bptr, "%s", *layerptr );
-      bptr = &bptr[strlen(bptr)];
-      free( *layerptr );
-    }
-
-    free( layers );
-  }
-
-  *bptr++ = ']';
-  *bptr++ = '}';
-  *bptr   = '\0';
-
-  return buf;
+  return JSON
+  (
+    "id": trie_to_json( L->id ),
+    "name": trie_to_json( L->name ),
+    "type": lyph_type_as_char( L ),
+    "layers": JS_ARRAY( layer_to_json, L->layers )
+  );
 }
 
 char *layer_to_json( layer *lyr )
 {
-  int len;
-  char *id, *mtlname, *mtlid, *color, thickness[1024], *buf;
-
-  len = strlen( "{\"id\": \"\", \"mtlname\": \"\", \"mtlid\": \"\", \"color\": \"\", \"thickness\": \"unspecied\"}" );
-
-  id = json_escape( trie_to_static( lyr->id ) );
-  mtlname = json_escape( trie_to_static( lyr->material->name ) );
-  mtlid = json_escape( trie_to_static( lyr->material->id ) );
-
-  if ( lyr->color )
-    color = json_escape( lyr->color );
-  else
-    color = strdup( "" );
-
-  if ( lyr->thickness != -1 )
-    sprintf( thickness, "%d", lyr->thickness );
-  else
-    sprintf( thickness, "Unspecified" );
-
-  len = len + strlen(id) + strlen(mtlname) + strlen(mtlid) + strlen(color) + strlen( thickness );
-
-  CREATE( buf, char, len+1 );
-
-  sprintf( buf, "{\"id\": \"%s\", \"mtlname\": \"%s\", \"mtlid\": \"%s\", \"color\": \"%s\", \"thickness\": \"%s\"}", id, mtlname, mtlid, color, thickness );
-
-  free( id );
-  free( mtlname );
-  free( mtlid );
-  free( color );
-
-  return buf;
+  return JSON
+  (
+    "id": trie_to_json( lyr->id ),
+    "mtlname": trie_to_json( lyr->material->name ),
+    "mtlid": trie_to_json( lyr->material->id ),
+    "thickness": lyr->thickness == -1 ? "unspecified" : int_to_json( lyr->thickness )
+  );
 }
 
-char *lyphnode_to_json( lyphnode *n, int flags )
+char *lyphnode_to_json( lyphnode *n )
 {
-  int len;
-  char *id = json_escape( trie_to_static( n->id ) );
-  char **xjson;
-  char *buf, *bptr;
-
-  len = strlen( "{\"id\": \"\", \"exits\": []}" );
-
-  len = len + strlen(id) + 1024;
-
-  if ( IS_SET( flags, LTJ_EXITS ) )
+  if ( IS_SET( lyphnode_to_json_flags, LTJ_EXITS ) )
   {
-    char **xjsptr;
-    exit_data **x;
-    int cnt = 0;
+    char *retval;
+    exit_data **exits;
 
-    for ( x = n->exits; *x; x++ )
+    if ( IS_SET( lyphnode_to_json_flags, LTJ_FULL_EXIT_DATA ) )
+      SET_BIT( exit_to_json_flags, ETJ_FULL_EXIT_DATA );
+
+    if ( IS_SET( lyphnode_to_json_flags, LTJ_SELECTIVE ) )
     {
-      if ( !IS_SET( flags, LTJ_EXITS ) || IS_SET( (*x)->to->flags, LYPHNODE_SELECTED ) )
-        cnt++;
+      exit_data **eptr, **nptr;
+
+      CREATE( exits, exit_data *, voidlen( (void**)n->exits ) + 1 );
+      for ( eptr = exits, nptr = n->exits; *nptr; nptr++ )
+        if ( IS_SET( (*nptr)->to->flags, LYPHNODE_SELECTED ) )
+          *eptr++ = *nptr;
+      *eptr = NULL;
     }
+    else
+      exits = n->exits;
 
-    CREATE( xjson, char *, x - n->exits );
+    retval = JSON
+    (
+      "id": trie_to_json( n->id ),
+      "exits": JS_ARRAY( exit_to_json, exits )
+    );
 
-    for ( x = n->exits, xjsptr = xjson; *x; x++ )
-    {
-      if ( IS_SET( flags, LTJ_EXITS ) && !IS_SET( (*x)->to->flags, LYPHNODE_SELECTED ) )
-        continue;
+    if ( exits != n->exits )
+      free( exits );
 
-      if ( IS_SET( flags, LTJ_FULL_EXIT_DATA ) )
-        *xjsptr = exit_to_json( *x, ETJ_FULL_EXIT_DATA );
-      else
-        *xjsptr = exit_to_json( *x, 0 );
-
-      len += strlen( *xjsptr ) + strlen( "," );
-      xjsptr++;
-    }
+    exit_to_json_flags = 0;
+    return retval;
   }
-
-  CREATE( buf, char, len+1 );
-
-  sprintf( buf, "{\"id\": \"%s\"", id );
-  bptr = &buf[strlen(buf)];
-  free( id );
-
-  if ( IS_SET( flags, LTJ_EXITS ) )
-  {
-    char **xjsptr;
-    exit_data **x;
-    int fFirst = 0;
-
-    sprintf( bptr, ", \"exits\": [" );
-    bptr = &bptr[strlen(bptr)];
-
-    for ( x = n->exits, xjsptr = xjson; *x; x++ )
-    {
-      if ( IS_SET( flags, LTJ_SELECTIVE ) && !IS_SET( (*x)->to->flags, LYPHNODE_SELECTED ) )
-        continue;
-
-      if ( fFirst )
-        *bptr++ = ',';
-      else
-        fFirst = 1;
-
-      sprintf( bptr, "%s", *xjsptr );
-      free( *xjsptr++ );
-      bptr = &bptr[strlen(bptr)];
-    }
-
-    free( xjson );
-    *bptr++ = ']';
-  }
-
-  *bptr++ = '}';
-  *bptr = '\0';
-
-  return buf;
+  else
+    return JSON1
+    (
+      "id": trie_to_json( n->id )
+    );
 }
 
-char *exit_to_json( exit_data *x, int flags )
+char *exit_to_json( exit_data *x )
 {
-  char *to_id = trie_to_json( x->to->id );
-  char *via;
-  char *json;
-  int len;
-
-  if ( IS_SET( flags, ETJ_FULL_EXIT_DATA ) )
-    via = lyphedge_to_json( x->via );
-  else
-    via = trie_to_json( x->via->id );
-
-  len = strlen( "{\"to\": , \"via\": }" );
-  len += strlen( to_id );
-  len += strlen( via );
-
-  CREATE( json, char, len + 1 );
-
-  sprintf( json, "{\"to\": %s, \"via\": %s}", to_id, via );
-
-  free( to_id );
-  free( via );
-
-  return json;
+  return JSON
+  (
+    "to": trie_to_json( x->to->id ),
+    "via":
+      IS_SET( exit_to_json_flags, ETJ_FULL_EXIT_DATA ) ?
+      lyphedge_to_json( x->via ) :
+      trie_to_json( x->via->id )
+  );
 }
 
 char *lyphedge_to_json( lyphedge *e )
 {
-  int len;
-  char *id = json_escape( trie_to_static( e->id ) );
-  char *fma = trie_to_json( e->fma );
-  char *name = trie_to_json( e->name );
-  char *from = lyphnode_to_json( e->from, 0 );
-  char *to = lyphnode_to_json( e->to, 0 );
-  char *au = e->lyph ? lyph_to_json( e->lyph ) : "null";
-  char *json;
+  char *retval;
+  int old_LTJ_flags = lyphnode_to_json_flags;
+  lyphnode_to_json_flags = 0;
 
-  len = strlen( "{\"id\": \"\", \"fma\": , \"name\": , \"type\": \"\", \"from\": , \"to\": , \"lyph\": }" );
-  len += strlen( id ) + strlen( fma ) + strlen( name ) + 1024 + strlen( from ) + strlen( to ) + strlen( au );
+  retval = JSON
+  (
+    "id": trie_to_json( e->id ),
+    "fma": trie_to_json( e->fma ),
+    "name": trie_to_json( e->name ),
+    "type": int_to_json( e->type ),
+    "from": lyphnode_to_json( e->from ),
+    "to": lyphnode_to_json( e->to ),
+    "lyph": e->lyph ? lyph_to_json( e->lyph ) : "null"
+  );
 
-  CREATE( json, char, len+1 );
-
-  sprintf( json, "{\"id\": \"%s\", \"fma\": %s, \"name\": %s, \"type\": \"%d\", \"from\": %s, \"to\": %s, \"lyph\": %s}", id, fma, name, e->type, from, to, au );
-
-  free( id );
-  free( fma );
-  free( name );
-  free( from );
-  free( to );
-  if ( e->lyph )
-    free( au );
-
-  return json;
+  lyphnode_to_json_flags = old_LTJ_flags;
+  return retval;
 }
 
 char *lyphpath_to_json( lyphedge **path )
 {
-  lyphedge **ptr;
-  char **edges, **edgesptr, *buf, *bptr;
-  int steps, len, fFirst = 0;
-
-  len = strlen( "{\"length\": \"\", \"edges\": []}" ) + 1024;
-
-  for ( ptr = path; *ptr; ptr++ )
-    ;
-
-  steps = ptr - path;
-
-  CREATE( edges, char *, steps );
-
-  for ( ptr = path, edgesptr = edges; *ptr; ptr++ )
-  {
-    *edgesptr = lyphedge_to_json( *ptr );
-    len += strlen( *edgesptr ) + strlen( "," );
-    edgesptr++;
-  }
-
-  CREATE( buf, char, len + 1 );
-
-  sprintf( buf, "{\"length\": \"%d\", \"edges\": [", steps );
-  bptr = &buf[strlen(buf)];
-
-  for ( ptr = path, edgesptr = edges; *ptr; ptr++ )
-  {
-    if ( fFirst )
-      *bptr++ = ',';
-    else
-      fFirst = 1;
-
-    sprintf( bptr, "%s", *edgesptr );
-    bptr = &bptr[strlen(bptr)];
-
-    free( *edgesptr );
-    edgesptr++;
-  }
-
-  free( edges );
-
-  *bptr++ = ']';
-  *bptr++ = '}';
-  *bptr = '\0';
-
-  return buf;
+  return JSON
+  (
+    "length": int_to_json( voidlen( (void**)path ) ),
+    "edges": JS_ARRAY( lyphedge_to_json, path )
+  );
 }
 
 char *lyph_type_as_char( lyph *L )

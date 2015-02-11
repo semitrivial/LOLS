@@ -117,12 +117,12 @@ typedef enum
 typedef enum
 {
   LTJ_EXITS = 1, LTJ_SELECTIVE = 2, LTJ_FULL_EXIT_DATA = 4
-} lyphnode_to_json_flags;
+} lyphnode_to_json_flag_types;
 
 typedef enum
 {
   ETJ_FULL_EXIT_DATA = 1
-} exit_to_json_flags;
+} exit_to_json_flag_types;
 
 struct LYPHEDGE
 {
@@ -241,7 +241,7 @@ char *strdupf( const char *fmt, ... );
 char *jsonf( int paircnt, ... );;
 char *jslist_r( json_array_printer *p, void **array, void *param );
 void json_gc( void );
-size_t voidlen( void **array );
+size_t voidlen( void **x );
 
 /*
  * ucl.c
@@ -263,10 +263,10 @@ lyph *lyph_by_id( char *id );
 char *lyph_to_json( lyph *L );
 char *layer_to_json( layer *lyr );
 lyphview *lyphview_by_id( char *idstr );
-char *lyphnode_to_json( lyphnode *n, int flags );
+char *lyphnode_to_json( lyphnode *n );
 char *lyphedge_to_json( lyphedge *e );
 char *lyphpath_to_json( lyphedge **path );
-char *exit_to_json( exit_data *x, int flags );
+char *exit_to_json( exit_data *x );
 layer *layer_by_id( char *id );
 layer *layer_by_description( char *mtid, int thickness, char *color );
 layer *layer_by_description_recurse( const lyph *L, const float thickness, const char *color, const trie *t );
