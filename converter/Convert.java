@@ -70,12 +70,48 @@ public class Convert
         for ( OWLAnnotation a : annots )
         {
           if ( a.getValue() instanceof OWLLiteral )
-            System.out.print( cID + " <http://www.w3.org/2000/01/rdf-schema#label> \"" + ((OWLLiteral)a.getValue()).getLiteral().trim() + "\" .\n" );
+            System.out.print( cID + " <http://www.w3.org/2000/01/rdf-schema#label> \"" + escape(((OWLLiteral)a.getValue()).getLiteral().trim()) + "\" .\n" );
         }
       }
     }
 
     return;
+  }
+
+  String escape(String x)
+  {
+    StringBuilder sb;
+    int i, len;
+
+    len = x.length();
+    sb = new StringBuilder(len);
+
+    for ( i = 0; i < len; i++ )
+    {
+      switch( x.charAt(i) )
+      {
+        case '\\':
+          sb.append( "\\\\" );
+          break;
+        case '\"':
+          sb.append( "\\\"" );
+          break;
+        case '\n':
+          sb.append( "\\n" );
+          break;
+        case '\r':
+          sb.append( "\\r" );
+          break;
+        case '\t':
+          sb.append( "\\t" );
+          break;
+        default:
+          sb.append( x.charAt(i) );
+          break;
+      }
+    }
+
+    return sb.toString();
   }
 }
 
