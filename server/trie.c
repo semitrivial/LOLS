@@ -12,6 +12,8 @@ trie *lyphedge_ids;
 trie *lyphedge_names;
 trie *lyphedge_fmas;
 
+void populate_void_buffer( void ***ptr, trie *t );
+
 #ifdef LOLS_WINDOWS
 char *strndup(const char *x, int len)
 {
@@ -438,4 +440,56 @@ void kill_ucl_syntax( ucl_syntax *s )
 
   free( s->toString );
   free( s );
+}
+
+void **datas_to_array( trie *t )
+{
+  int cnt = count_nontrivial_members( t );
+  void **buf, **bptr;
+
+  CREATE( buf, void *, cnt + 1 );
+  bptr = buf;
+
+  populate_void_buffer( &bptr, t );
+
+  *bptr = NULL;
+
+  return buf;
+}
+
+void populate_void_buffer( void ***ptr, trie *t )
+{
+  if ( t->data )
+  {
+    **ptr = (void *)t->data;
+    (*ptr)++;
+  }
+
+  if ( t->children )
+  {
+    trie **child;
+
+    for ( child = t->children; *child; child++ )
+      populate_void_buffer( ptr, *child );
+  }
+}
+
+int count_nontrivial_members( trie *t )
+{
+  int cnt;
+
+  if ( t->data )
+    cnt = 1;
+  else
+    cnt = 0;
+
+  if ( t->children )
+  {
+    trie **child;
+
+    for ( child = t->children; *child; child++ )
+      cnt += count_nontrivial_members( *child );
+  }
+
+  return cnt;
 }

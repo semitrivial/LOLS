@@ -479,7 +479,7 @@ json_str *last_js_str[JSON_HASH];
 int is_json( const char *str )
 {
   json_str *x;
-  unsigned char hash = get_js_hash( str );
+  int hash = get_js_hash( str );
 
   for ( x = first_js_str[hash]; x; x = x->next )
     if ( x->str == str )
@@ -488,12 +488,9 @@ int is_json( const char *str )
   return 0;
 }
 
-unsigned char get_js_hash( char const *str )
+unsigned int get_js_hash( char const *str )
 {
-  while ( *str == '\"' || *str == '{' || *str == '[' )
-    str++;
-
-  return (unsigned char) *str;
+  return ((unsigned int)str) % JSON_HASH;
 }
 
 char *prep_for_json_gc( char *str )
@@ -550,6 +547,13 @@ char *json_c_adapter( int paircnt, ... )
   for ( i = 0, len = 0; i < rawcnt; i++ )
   {
     ch = va_arg( vargs, char * );
+
+    if ( !ch )
+    {
+      args[i] = prep_for_json_gc( strdup( "null" ) );
+      len += strlen( "null" );
+      continue;
+    }
 
     if ( is_json( ch ) )
     {
@@ -623,6 +627,9 @@ char *json_array_worker( char * (*fnc) (void *), void **array )
   void **ptr;
   int cnt, len;
 
+  if ( !array )
+    return prep_for_json_gc( strdup( "[]" ) );
+
   for ( ptr = array; *ptr; ptr++ )
     ;
 
@@ -643,6 +650,7 @@ char *json_array_worker( char * (*fnc) (void *), void **array )
       free( results );
       return NULL;
     }
+
     len += strlen( *rptr );
     rptr++;
   }
@@ -667,6 +675,7 @@ char *json_array_worker( char * (*fnc) (void *), void **array )
     bptr = &bptr[strlen(bptr)];
     *bptr = ',';
   }
+
   bptr[0] = ']';
   bptr[1] = '\0';
 

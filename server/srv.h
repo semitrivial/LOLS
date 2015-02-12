@@ -152,3 +152,7 @@ void handle_lyphpath_request( http_request *req, url_param **params );
 void handle_lyphview_request( char *request, http_request *req );
 void free_url_params( url_param **buf );
 char *get_url_param( url_param **params, char *key );
+void handle_all_lyphs_request( http_request *req );
+void handle_all_lyphedges_request( http_request *req );
+void handle_all_lyphnodes_request( http_request *req );
+void handle_all_lyphviews_request( http_request *req );

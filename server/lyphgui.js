@@ -2,6 +2,8 @@ var palette = "";
 var layers_html = "";
 var layer_ids = new Object();
 var palette_ids = new Object();
+var use_raw_response = false;
+
 
 function g(x)
 {
@@ -34,7 +36,7 @@ function ajax_run(inputbox)
 
     query = '/lyph/'+g(inputbox).value.trim();
   }
-  else if ( inputbox == 'layer_adder' )
+  else if ( inputbox === 'layer_adder' )
   {
     var materialid = g('layer_material').value.trim();
 
@@ -55,7 +57,7 @@ function ajax_run(inputbox)
     if ( color != '' )
       query = query + '&color=' + encodeURIComponent( color );
   }
-  else if ( inputbox == 'lyph_adder' )
+  else if ( inputbox === 'lyph_adder' )
   {
     var proposedname = g('lyphname').value.trim();
 
@@ -95,11 +97,34 @@ function ajax_run(inputbox)
       query += '&layer'+i+'='+encodeURIComponent(layer_ids[i]);
     }
   }
-  else if ( inputbox = 'display_lyph_by_id' )
+  else if ( inputbox === 'display_lyph_by_id' )
   {
     query = '/lyph/' + encodeURIComponent(g('display_lyph_by_id').value);
 
     handle_parsed_data = display_lyph;
+  }
+  else if ( inputbox === 'view_all_lyphs' )
+  {
+    query = '/all_lyphs/';
+    use_raw_response = true;
+    handle_parsed_data = display_all_lyphs;
+  }
+  else if ( inputbox === 'shortest_path' )
+  {
+    query = '/lyphpath/?from='+encodeURIComponent(g('frombox').value)+'&to='+encodeURIComponent(g('tobox').value);
+    use_raw_response = true;
+    handle_parsed_data = display_lyphpath;
+  }
+  else if ( inputbox === 'new_edge' )
+  {
+    query = '/makelyphedge/?from='+encodeURIComponent(g('edgefrombox').value)+'&to='+encodeURIComponent(g('edgetobox').value);
+    query += '&name='+encodeURIComponent(g('edgenamebox').value);
+    query += '&type='+encodeURIComponent(g('edgetypebox').value);
+    query += '&fma='+encodeURIComponent(g('edgefmabox').value);
+    if ( g('edgelyphbox').value != '' )
+      query += '&lyph='+encodeURIComponent(g('edgelyphbox').value);
+    use_raw_response = true;
+    handle_parsed_data = handle_new_edge;
   }
 
   xmlhttp.onreadystatechange = function()   
@@ -114,7 +139,15 @@ function ajax_run(inputbox)
         return;
       }
       else
-        handle_parsed_data( parsed );
+      {
+        if ( use_raw_response === true )
+        {
+          handle_parsed_data( xmlhttp.responseText );
+          use_raw_response = false;
+        }
+        else
+          handle_parsed_data( parsed );
+      }
     }
     else if ( xmlhttp.readyState == 4 && xmlhttp.status != 200 )
       alert("Problem connecting to server");
@@ -223,6 +256,21 @@ function add_layer_with_position( x, pos )
   g('layers_list').innerHTML = layers_html;  
 }
 
+function display_all_lyphs( x )
+{
+  g('view_all_lyphs_result').innerHTML = "<pre>"+htmlEscape( x )+"</pre>";
+}
+
+function display_lyphpath( x )
+{
+  g('shortest_path_results').innerHTML = "<pre>"+htmlEscape( x )+"</pre>";
+}
+
+function handle_new_edge( x )
+{
+  g('new_edge_results').innerHTML = "<pre>"+htmlEscape(x)+"</pre>";
+}
+
 function display_lyph( x )
 {
   material_to_palette( x );
@@ -253,4 +301,12 @@ function clear_display()
   layer_ids = new Object();
   layers_html = "";
   g('layers_list').innerHTML = '';
+}
+
+function menuclick(x)
+{
+  $(".area").not("."+x+"_area").hide(500, function()
+  {
+    $("."+x+"_area").show(500);
+  });  
 }

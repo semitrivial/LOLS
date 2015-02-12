@@ -195,6 +195,38 @@ void main_loop( void )
 
       request = url_decode(&reqptr[1]);
 
+      if ( !strcmp( reqtype, "all_lyphs" ) )
+      {
+        handle_all_lyphs_request( req );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
+      if ( !strcmp( reqtype, "all_lyphnodes" ) )
+      {
+        handle_all_lyphnodes_request( req );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
+      if ( !strcmp( reqtype, "all_lyphedges" ) )
+      {
+        handle_all_lyphedges_request( req );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
+      if ( !strcmp( reqtype, "all_lyphviews" ) )
+      {
+        handle_all_lyphviews_request( req );
+        free( request );
+        free_url_params( params );
+        continue;
+      }
+
       if ( !strcmp( reqtype, "makelyph" ) )
       {
         handle_makelyph_request( req, params );
@@ -688,7 +720,7 @@ void http_send( http_request *req, char *txt, int len )
     char *newbuf;
 
     CREATE( newbuf, char, len+10 );
-    memcpy( newbuf, txt, len );
+    memcpy( newbuf, txt, len+1 );
     free( c->outbuf );
     c->outbuf = newbuf;
     c->outbuflen = len;
@@ -726,7 +758,7 @@ void send_200_response( http_request *req, char *txt )
 
 void send_200_with_type( http_request *req, char *txt, char *type )
 {
-  char buf[3*MAX_STRING_LEN];
+  char *buf;
 
   /*
    * JSONP support
@@ -739,23 +771,25 @@ void send_200_with_type( http_request *req, char *txt, char *type )
     txt = jsonp;
   }
 
-  sprintf( buf, "HTTP/1.1 200 OK\r\n"
-                "Date: %s\r\n"
-                "Content-Type: %s; charset=utf-8\r\n"
-                "%s"
-                "Content-Length: %zd\r\n"
-                "\r\n"
-                "%s",
-                current_date(),
-                type,
-                nocache_headers(),
-                strlen(txt),
-                txt );
+  buf = strdupf(  "HTTP/1.1 200 OK\r\n"
+                  "Date: %s\r\n"
+                  "Content-Type: %s; charset=utf-8\r\n"
+                  "%s"
+                  "Content-Length: %zd\r\n"
+                  "\r\n"
+                  "%s",
+                  current_date(),
+                  type,
+                  nocache_headers(),
+                  strlen(txt),
+                  txt );
 
   if ( req->callback )
     free( txt );
 
   http_write( req, buf );
+
+  free( buf );
 }
 
 char *nocache_headers(void)
@@ -1354,6 +1388,58 @@ char *get_url_param( url_param **params, char *key )
       return (*ptr)->val;
 
   return NULL;
+}
+
+void handle_all_lyphedges_request( http_request *req )
+{
+  lyphedge **edges = (lyphedge **)datas_to_array( lyphedge_ids );
+
+  send_200_response( req, JS_ARRAY( lyphedge_to_json, edges ) );
+
+  free( edges );
+}
+
+void handle_all_lyphs_request( http_request *req )
+{
+  lyph **lyphs = (lyph **)datas_to_array( lyph_ids );
+
+  send_200_response( req, JS_ARRAY( lyph_to_json, lyphs ) );
+
+  free( lyphs );
+}
+
+void handle_all_lyphviews_request( http_request *req )
+{
+  lyphview **v, **vptr, **viewsptr;
+  extern lyphview obsolete_lyphview;
+  extern lyphview **views;
+
+  CREATE( v, lyphview *, voidlen( (void **)&views[1] ) );
+  vptr = v;
+
+  for ( viewsptr = &views[1]; *viewsptr; viewsptr++ )
+    if ( *viewsptr != &obsolete_lyphview )
+      *vptr++ = *viewsptr;
+
+  *vptr = NULL;
+
+  send_200_response( req, JS_ARRAY( lyphview_to_json, v ) );
+
+  free( v );
+}
+
+void handle_all_lyphnodes_request( http_request *req )
+{
+  lyphnode **n = (lyphnode **)datas_to_array( lyphnode_ids );
+  extern int lyphnode_to_json_flags;
+
+  lyphnode_to_json_flags = LTJ_EXITS;
+
+  send_200_response( req, JS_ARRAY( lyphnode_to_json, n ) );
+
+  lyphnode_to_json_flags = 0;
+
+  free ( n );
 }
 
 #endif

@@ -223,6 +223,8 @@ char *trie_to_static( trie *t );
 char *trie_to_json( trie *t );
 void trie_search_autocomplete( char *label_ch, trie **buf, trie *base );
 int cmp_trie_data (const void * a, const void * b);
+void **datas_to_array( trie *t );
+int count_nontrivial_members( trie *t );
 
 /*
  * util.c

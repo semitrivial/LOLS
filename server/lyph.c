@@ -1546,7 +1546,7 @@ char *lyphedge_to_json( lyphedge *e )
     "type": int_to_json( e->type ),
     "from": lyphnode_to_json( e->from ),
     "to": lyphnode_to_json( e->to ),
-    "lyph": e->lyph ? lyph_to_json( e->lyph ) : "null"
+    "lyph": e->lyph ? lyph_to_json( e->lyph ) : NULL
   );
 
   lyphnode_to_json_flags = old_LTJ_flags;
