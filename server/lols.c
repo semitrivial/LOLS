@@ -7,21 +7,7 @@ void init_lols(void)
   label_to_iris = blank_trie();
   label_to_iris_lowercase = blank_trie();
 
-  lyph_names = blank_trie();
-  lyph_ids = blank_trie();
-  layer_ids = blank_trie();
-  lyphnode_ids = blank_trie();
-  lyphedge_ids = blank_trie();
-  lyphedge_names = blank_trie();
-  lyphedge_fmas = blank_trie();
-
   init_html_codes();
-
-#ifdef ENABLE_LYPHS
-  load_lyphs();
-  load_lyphedges();
-  load_lyphviews();
-#endif
 
   return;
 }
