@@ -92,7 +92,7 @@ void init_lols_http_server( int port )
   if ( bind( srvsock, servinfo->ai_addr, servinfo->ai_addrlen ) == -1 )
   {
     fprintf( stderr, "Fatal: Couldn't open server port (bind failed)\n" );
-    abort();
+    exit( EXIT_SUCCESS );
   }
 
   if ( listen( srvsock, HTTP_LISTEN_BACKLOG ) == -1 )
