@@ -198,23 +198,44 @@ void main_loop( void )
         fShortIRI = 1;
       }
       else if ( !strcmp( reqtype, "autocomp" ) || !strcmp( reqtype, "autocomplete" ) )
+      {
         data = get_autocomplete_labels( request, 0 );
+
+        send_200_response( req, JSON
+        (
+          "Results": JS_ARRAY( trie_to_json, data ),
+          "IRIs": JS_ARRAY( label_to_iri_to_json, data )
+        ) );
+
+        goto main_loop_cleanup;
+      }
       else if ( !strcmp( reqtype, "autocomp-case-insensitive" ) || !strcmp( reqtype, "autocomplete-case-insensitive" ) )
+      {
         data = get_autocomplete_labels( request, 1 );
+
+        send_200_response( req, JSON
+        (
+          "Results": JS_ARRAY( trie_to_json, data ),
+          "IRIs": JS_ARRAY( label_to_iri_to_json, data )
+        ) );
+
+        goto main_loop_cleanup;
+      }
       else
       {
+        send_400_response( req );
+
+        main_loop_cleanup:
         *reqptr = '/';
         free( request );
-        send_400_response( req );
         continue;
       }
 
       if ( !data )
       {
-        *reqptr = '/';
-        free( request );
         send_200_response( req, "{\"Results\": []}" );
-        continue;
+
+        goto main_loop_cleanup;
       }
 
       sprintf( repl, "{\"Results\": [" );
@@ -254,8 +275,8 @@ void main_loop( void )
       sprintf( rptr, "]}" );
 
       send_200_response( req, repl );
-      *reqptr = '/';
-      free( request );
+
+      goto main_loop_cleanup;
     }
     else
       break;

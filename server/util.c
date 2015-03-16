@@ -257,3 +257,8 @@ size_t voidlen( void **x )
 
   return ptr - x;
 }
+
+char *label_to_iri_to_json( trie *label )
+{
+  return JS_ARRAY( trie_to_json, label->data );
+}

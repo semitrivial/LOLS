@@ -126,6 +126,7 @@ char *strdupf( const char *fmt, ... );
 char *jsonf( int paircnt, ... );;
 char *jslist_r( json_array_printer *p, void **array, void *param );
 size_t voidlen( void **x );
+char *label_to_iri_to_json( trie *label );
 
 /*
  * ucl.c
