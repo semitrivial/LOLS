@@ -139,3 +139,7 @@ const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, http_requ
 void handle_ucl_syntax_request( char *request, http_request *req );
 void free_url_params( url_param **buf );
 char *get_url_param( url_param **params, char *key );
+void handle_all_predicates_request( http_request *req, char *request, url_param **params );
+void handle_predicate_request( http_request *req, char *request, url_param **params );
+void handle_predicate_autocomplete_request( http_request *req, char *request, url_param **params );
+char *get_param( url_param **params, char *key );

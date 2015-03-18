@@ -73,6 +73,18 @@ public class Convert
             System.out.print( cID + " <http://www.w3.org/2000/01/rdf-schema#label> \"" + escape(((OWLLiteral)a.getValue()).getLiteral().trim()) + "\" .\n" );
         }
       }
+
+      Set<OWLObjectProperty> props = o.getObjectPropertiesInSignature();
+
+      for ( OWLObjectProperty prop : props )
+      {
+        if ( prop.isOWLTopObjectProperty() )
+          continue;
+
+        String pID = prop.toString().trim();
+
+        System.out.print( pID + " <http://open-physiology.org/ont#is_predicate> \"true\" .\n" );
+      }
     }
 
     return;

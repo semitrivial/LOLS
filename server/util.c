@@ -131,6 +131,15 @@ char *lowercaserize( char *x )
   return buf;
 }
 
+void lowercaserize_destructive( char *x )
+{
+  for ( ; *x; x++ )
+  {
+    if ( *x >= 'A' && *x <= 'Z' )
+      *x += 'a' - 'A';
+  }
+}
+
 char *get_url_shortform( char *iri )
 {
   char *ptr;
@@ -261,4 +270,31 @@ size_t voidlen( void **x )
 char *label_to_iri_to_json( trie *label )
 {
   return JS_ARRAY( trie_to_json, label->data );
+}
+
+char *ont_from_full( char *full, char *shrt )
+{
+  char *fptr;
+
+  if ( !shrt )
+    return NULL;
+
+  // Skip '#' or '/' and then go back once more
+  for ( fptr = &shrt[-2]; fptr >= full; fptr-- )
+    if ( *fptr == '/' )
+      break;
+
+  if ( fptr < full )
+    return NULL;
+
+  fptr++;
+
+  if ( fptr >= &shrt[-1] )
+    return NULL;
+
+  shrt[-1] = '\0';
+
+  lowercaserize_destructive( fptr );
+
+  return fptr;
 }

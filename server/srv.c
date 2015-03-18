@@ -169,13 +169,12 @@ void main_loop( void )
 
       request = url_decode(&reqptr[1]);
 
-      free_url_params( params );
-
       if ( !strcmp( reqtype, "uclsyntax" )
       ||   !strcmp( reqtype, "ucl_syntax" )
       ||   !strcmp( reqtype, "ucl-syntax" ) )
       {
         handle_ucl_syntax_request( request, req );
+        free_url_params( params );
         free( request );
         continue;
       }
@@ -221,11 +220,27 @@ void main_loop( void )
 
         goto main_loop_cleanup;
       }
+      else if ( !strcmp( reqtype, "all_predicates" ) )
+      {
+        handle_all_predicates_request( req, request, params );
+        goto main_loop_cleanup;
+      }
+      else if ( !strcmp( reqtype, "predicate" ) )
+      {
+        handle_predicate_request( req, request, params );
+        goto main_loop_cleanup;
+      }
+      else if ( !strcmp( reqtype, "predicate_autocomplete" ) )
+      {
+        handle_predicate_autocomplete_request( req, request, params );
+        goto main_loop_cleanup;
+      }
       else
       {
         send_400_response( req );
 
         main_loop_cleanup:
+        free_url_params( params );
         *reqptr = '/';
         free( request );
         continue;
@@ -237,6 +252,8 @@ void main_loop( void )
 
         goto main_loop_cleanup;
       }
+
+      free_url_params( params );
 
       sprintf( repl, "{\"Results\": [" );
       rptr = &repl[strlen( "{\"Results\": [")];
@@ -283,6 +300,17 @@ void main_loop( void )
   }
 
   json_gc();
+}
+
+char *get_param( url_param **params, char *key )
+{
+  url_param **ptr;
+
+  for ( ptr = params; *ptr; ptr++ )
+    if ( !strcmp( (*ptr)->key, key ) )
+      return (*ptr)->val;
+
+  return NULL;
 }
 
 void http_update_connections( void )
@@ -899,3 +927,58 @@ char *get_url_param( url_param **params, char *key )
 
   return NULL;
 }
+
+void populate_predicate_results( trie *t, trie ***bptr, char *ont )
+{
+  if ( t->data )
+  {
+    if ( ont )
+    {
+      char *tont = (char *)t->data;
+
+      if ( strcmp( tont, ont ) )
+        goto populate_predicate_results_escape;
+    }
+
+    **bptr = t;
+    (*bptr)++;
+  }
+
+  populate_predicate_results_escape:
+  TRIE_RECURSE( populate_predicate_results( *child, bptr, ont ) );
+}
+
+void handle_all_predicates_request( http_request *req, char *request, url_param **params )
+{
+  char *ont = get_param( params, "ont" );
+  int cnt = count_nontrivial_members( predicates_full );
+  trie **buf, **bptr;
+
+  if ( ont )
+    lowercaserize_destructive( ont );
+
+  CREATE( buf, trie *, cnt + 1 );
+  bptr = buf;
+
+  populate_predicate_results( predicates_full, &bptr, ont );
+
+  *bptr = NULL;
+
+  send_200_response( req, JSON1
+  (
+    "results": JS_ARRAY( trie_to_json, buf )
+  ) );
+
+  free( buf );
+}
+
+void handle_predicate_request( http_request *req, char *request, url_param **params )
+{
+  return;
+}
+
+void handle_predicate_autocomplete_request( http_request *req, char *request, url_param **params )
+{
+  return;
+}
+

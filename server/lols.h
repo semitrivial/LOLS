@@ -75,6 +75,8 @@ struct AMBIG
 extern trie *iri_to_labels;
 extern trie *label_to_iris;
 extern trie *label_to_iris_lowercase;
+extern trie *predicates_full;
+extern trie *predicates_short;
 
 /*
  * Function prototypes
@@ -90,6 +92,7 @@ trie **get_labels_by_iri( char *iri_ch );
 trie **get_iris_by_label( char *label_ch );
 trie **get_iris_by_label_case_insensitive( char *label_ch );
 trie **get_autocomplete_labels( char *label_ch, int case_insens );
+void add_lols_predicate( char *iri_ch );
 
 /*
  * srv.c
@@ -117,6 +120,7 @@ void log_linenum( int linenum );
 char *html_encode( char *str );
 void init_html_codes( void );
 char *lowercaserize( char *x );
+void lowercaserize_destructive( char *x );
 char *get_url_shortform( char *iri );
 char *url_decode(char *str);
 int is_number( const char *arg );
@@ -127,6 +131,7 @@ char *jsonf( int paircnt, ... );;
 char *jslist_r( json_array_printer *p, void **array, void *param );
 size_t voidlen( void **x );
 char *label_to_iri_to_json( trie *label );
+int full_matches_ont( char *full, char *ont );
 
 /*
  * ucl.c
@@ -139,3 +144,4 @@ void kill_ucl_syntax( ucl_syntax *s );
 int is_ambiguous( trie **data );
 void free_ambigs( ambig *head );
 char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail, char *possible_error );
+char *ont_from_full( char *full, char *shrt );

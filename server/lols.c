@@ -6,6 +6,8 @@ void init_lols(void)
   iri_to_labels = blank_trie();
   label_to_iris = blank_trie();
   label_to_iris_lowercase = blank_trie();
+  predicates_full = blank_trie();
+  predicates_short = blank_trie();
 
   init_html_codes();
 
@@ -23,6 +25,15 @@ void got_triple( char *subj, char *pred, char *obj )
       subj[strlen(subj)-1] = '\0';
 
       add_lols_entry( &subj[1], &obj[1] );
+    }
+  }
+
+  if ( !strcmp( pred, "<http://open-physiology.org/ont#is_predicate>" ) )
+  {
+    if ( *subj == '<' && !strcmp( obj, "\"true\"" ) )
+    {
+      subj[strlen(subj)-1] = '\0';
+      add_lols_predicate( &subj[1] );
     }
   }
 
@@ -147,6 +158,31 @@ void add_to_data( trie ***dest, trie *datum )
     free( *dest );
     *dest = data;
   }
+}
+
+void add_lols_predicate( char *iri_ch )
+{
+  trie *full;
+  char *short_ch, *ont;
+
+  if ( !*iri_ch )
+    return;
+
+  full = trie_strdup( iri_ch, predicates_full );
+
+  short_ch = get_url_shortform( iri_ch );
+
+  if ( short_ch )
+  {
+    trie *shrt = trie_strdup( short_ch, predicates_short );
+    add_to_data( &shrt->data, full );
+  }
+
+  lowercaserize_destructive( iri_ch );
+  ont = ont_from_full( iri_ch, short_ch );
+
+  if ( ont )
+    full->data = (trie **)strdup( ont );
 }
 
 void add_lols_entry( char *iri_ch, char *label_ch )

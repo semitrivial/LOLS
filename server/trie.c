@@ -3,6 +3,8 @@
 trie *iri_to_labels;
 trie *label_to_iris;
 trie *label_to_iris_lowercase;
+trie *predicates_full;
+trie *predicates_short;
 
 void populate_void_buffer( void ***ptr, trie *t );
 

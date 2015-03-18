@@ -181,4 +181,21 @@ while(0)
  */
 #define LOWER(x) ( ( (x) >= 'A' && (x) <= 'Z' )? x - 'A' + 'a' : x )
 
+/*
+ * Generic trie recursion
+ */
+#define TRIE_RECURSE( code )\
+do\
+{\
+  if ( t->children )\
+  {\
+    trie **child;\
+    for ( child = t->children; *child; child++ )\
+    {\
+      code ;\
+    }\
+  }\
+}\
+while(0)
+
 #endif //LOLS_MACRO_DOT_H_INCLUDE_GUARD
