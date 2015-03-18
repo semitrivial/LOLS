@@ -92,7 +92,7 @@ trie **get_labels_by_iri( char *iri_ch );
 trie **get_iris_by_label( char *label_ch );
 trie **get_iris_by_label_case_insensitive( char *label_ch );
 trie **get_autocomplete_labels( char *label_ch, int case_insens );
-void add_lols_predicate( char *iri_ch );
+void add_lols_predicate( char *iri_ch, char *label );
 
 /*
  * srv.c
@@ -144,4 +144,4 @@ void kill_ucl_syntax( ucl_syntax *s );
 int is_ambiguous( trie **data );
 void free_ambigs( ambig *head );
 char *ucl_syntax_output( ucl_syntax *s, ambig *head, ambig *tail, char *possible_error );
-char *ont_from_full( char *full, char *shrt );
+char *ont_from_full( char *full );

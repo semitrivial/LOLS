@@ -272,9 +272,15 @@ char *label_to_iri_to_json( trie *label )
   return JS_ARRAY( trie_to_json, label->data );
 }
 
-char *ont_from_full( char *full, char *shrt )
+char *ont_from_full( char *full )
 {
   char *fptr;
+  char *shrt;
+
+  if ( !full )
+    return NULL;
+
+  shrt = get_url_shortform( full );
 
   if ( !shrt )
     return NULL;

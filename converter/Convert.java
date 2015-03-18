@@ -84,10 +84,44 @@ public class Convert
         String pID = prop.toString().trim();
 
         System.out.print( pID + " <http://open-physiology.org/ont#is_predicate> \"true\" .\n" );
+
+        Set<OWLAnnotation> annots = prop.getAnnotations(o, df.getRDFSLabel() );
+        boolean fLabel = false;
+
+        for ( OWLAnnotation a : annots )
+        {
+          if ( a.getValue() instanceof OWLLiteral )
+          {
+            System.out.print( pID + " <http://open-physiology.org/ont#predicate_label> \"" + escape(((OWLLiteral)a.getValue()).getLiteral().trim()) + "\" .\n" );
+            fLabel = true;
+          }
+        }
+
+        if ( !fLabel )
+          System.out.print( pID + " <http://open-physiology.org/ont#predicate_label> \"" + shorturl( pID ) + "\" .\n" );
       }
     }
 
     return;
+  }
+
+  public static String shorturl(String url)
+  {
+    if ( url.charAt(0) == '<' )
+      url = url.substring(1,url.length()-1);
+
+    int i = url.lastIndexOf("#");
+
+    if ( i != -1 )
+      return url.substring(i+1);
+
+    i = url.lastIndexOf("/");
+    int j = url.indexOf("/");
+
+    if ( i != j )
+      return url.substring(i+1);
+
+    return url;
   }
 
   String escape(String x)

@@ -28,12 +28,13 @@ void got_triple( char *subj, char *pred, char *obj )
     }
   }
 
-  if ( !strcmp( pred, "<http://open-physiology.org/ont#is_predicate>" ) )
+  if ( !strcmp( pred, "<http://open-physiology.org/ont#predicate_label>" ) )
   {
-    if ( *subj == '<' && !strcmp( obj, "\"true\"" ) )
+    if ( *subj == '<' && *obj == '\"' )
     {
       subj[strlen(subj)-1] = '\0';
-      add_lols_predicate( &subj[1] );
+      obj[strlen(obj)-1] = '\0';
+      add_lols_predicate( &subj[1], &obj[1] );
     }
   }
 
@@ -160,26 +161,21 @@ void add_to_data( trie ***dest, trie *datum )
   }
 }
 
-void add_lols_predicate( char *iri_ch )
+void add_lols_predicate( char *iri_ch, char *label_ch )
 {
-  trie *full;
-  char *short_ch, *ont;
+  trie *full, *label;
+  char *ont;
 
   if ( !*iri_ch )
     return;
 
   full = trie_strdup( iri_ch, predicates_full );
+  label = trie_strdup( label_ch, predicates_short );
 
-  short_ch = get_url_shortform( iri_ch );
-
-  if ( short_ch )
-  {
-    trie *shrt = trie_strdup( short_ch, predicates_short );
-    add_to_data( &shrt->data, full );
-  }
+  add_to_data( &label->data, full );
 
   lowercaserize_destructive( iri_ch );
-  ont = ont_from_full( iri_ch, short_ch );
+  ont = ont_from_full( iri_ch );
 
   if ( ont )
     full->data = (trie **)strdup( ont );

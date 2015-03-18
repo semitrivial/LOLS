@@ -63,6 +63,7 @@ while(0)
 typedef struct HTTP_REQUEST http_request;
 typedef struct HTTP_CONN http_conn;
 typedef struct URL_PARAM url_param;
+typedef struct PRED_RESULT pred_result;
 
 struct HTTP_REQUEST
 {
@@ -96,6 +97,12 @@ struct URL_PARAM
 {
   char *key;
   char *val;
+};
+
+struct PRED_RESULT
+{
+  trie *label;
+  trie **iris;
 };
 
 /*

@@ -928,48 +928,101 @@ char *get_url_param( url_param **params, char *key )
   return NULL;
 }
 
-void populate_predicate_results( trie *t, trie ***bptr, char *ont )
+void populate_predicate_results( trie *t, pred_result ***bptr, char *ont )
 {
+  pred_result *r;
+
+  CREATE( r, pred_result, 1 );
+
+  r->label = t;
+
   if ( t->data )
   {
-    if ( ont )
-    {
-      char *tont = (char *)t->data;
+    trie **ptr, **rptr;
+    int cnt;
 
-      if ( strcmp( tont, ont ) )
-        goto populate_predicate_results_escape;
+    for ( ptr = t->data; *ptr; ptr++ )
+      ;
+    cnt = ptr - t->data;
+
+    CREATE( r->iris, trie *, cnt + 1 );
+    rptr = r->iris;
+
+    for ( ptr = t->data; *ptr; ptr++ )
+    {
+      if ( ont )
+      {
+        char *ront = (char *) ((*ptr)->data);
+
+        if ( strcmp( ront, ont ) )
+          continue;
+      }
+      *rptr++ = *ptr;
     }
 
-    **bptr = t;
-    (*bptr)++;
+    if ( rptr == r->iris )
+    {
+      free( r->iris );
+      free( r );
+      TRIE_RECURSE( populate_predicate_results( *child, bptr, ont ) );
+      return;
+    }
+
+    *rptr = NULL;
+  }
+  else
+  {
+    CREATE( r->iris, trie *, 1 );
+    r->iris[0] = NULL;
   }
 
-  populate_predicate_results_escape:
+  **bptr = r;
+  (*bptr)++;
+
   TRIE_RECURSE( populate_predicate_results( *child, bptr, ont ) );
+}
+
+char *predicate_label_to_json( pred_result *r )
+{
+  return JSON
+  (
+    "label": trie_to_json( r->label ),
+    "iris": JS_ARRAY( trie_to_json, r->iris )
+  );
+}
+
+void free_pred_results( pred_result **buf )
+{
+  pred_result **ptr;
+
+  for ( ptr = buf; *ptr; ptr++ )
+  {
+    free( (*ptr)->iris );
+    free( *ptr );
+  }
 }
 
 void handle_all_predicates_request( http_request *req, char *request, url_param **params )
 {
   char *ont = get_param( params, "ont" );
-  int cnt = count_nontrivial_members( predicates_full );
-  trie **buf, **bptr;
+  static pred_result *buf[1024*1024];
+  pred_result **bptr;
 
   if ( ont )
     lowercaserize_destructive( ont );
 
-  CREATE( buf, trie *, cnt + 1 );
   bptr = buf;
 
-  populate_predicate_results( predicates_full, &bptr, ont );
+  populate_predicate_results( predicates_short, &bptr, ont );
 
   *bptr = NULL;
 
   send_200_response( req, JSON1
   (
-    "results": JS_ARRAY( trie_to_json, buf )
+    "results": JS_ARRAY( predicate_label_to_json, buf )
   ) );
 
-  free( buf );
+  free_pred_results( buf );
 }
 
 void handle_predicate_request( http_request *req, char *request, url_param **params )
