@@ -49,7 +49,7 @@ int main( int argc, const char* argv[] )
     /*
      * To do: make this commandline-configurable
      */
-    usleep(10000);
+    usleep(100000);
     main_loop();
   }
 }
@@ -930,16 +930,15 @@ char *get_url_param( url_param **params, char *key )
 
 void populate_predicate_results( trie *t, pred_result ***bptr, char *ont )
 {
-  pred_result *r;
-
-  CREATE( r, pred_result, 1 );
-
-  r->label = t;
-
   if ( t->data )
   {
+    pred_result *r;
     trie **ptr, **rptr;
     int cnt;
+
+    CREATE( r, pred_result, 1 );
+
+    r->label = t;
 
     for ( ptr = t->data; *ptr; ptr++ )
       ;
@@ -969,15 +968,10 @@ void populate_predicate_results( trie *t, pred_result ***bptr, char *ont )
     }
 
     *rptr = NULL;
-  }
-  else
-  {
-    CREATE( r->iris, trie *, 1 );
-    r->iris[0] = NULL;
-  }
 
-  **bptr = r;
-  (*bptr)++;
+    **bptr = r;
+    (*bptr)++;
+  }
 
   TRIE_RECURSE( populate_predicate_results( *child, bptr, ont ) );
 }
