@@ -932,45 +932,29 @@ void populate_predicate_results( trie *t, pred_result ***bptr, char *ont )
 {
   if ( t->data )
   {
-    pred_result *r;
-    trie **ptr, **rptr;
-    int cnt;
+    trie **d;
 
-    CREATE( r, pred_result, 1 );
-
-    r->label = t;
-
-    for ( ptr = t->data; *ptr; ptr++ )
-      ;
-    cnt = ptr - t->data;
-
-    CREATE( r->iris, trie *, cnt + 1 );
-    rptr = r->iris;
-
-    for ( ptr = t->data; *ptr; ptr++ )
+    for ( d = t->data; *d; d++ )
     {
+      pred_result *r;
+
       if ( ont )
       {
-        char *ront = (char *) ((*ptr)->data);
+        char *d_ont = (char *) ((*d)->data);
 
-        if ( strcmp( ront, ont ) )
+        if ( strcmp( d_ont, ont ) )
           continue;
       }
-      *rptr++ = *ptr;
+
+      CREATE( r, pred_result, 1 );
+
+      r->label = t;
+      r->iri = *d;
+      r->ont = (char*) ((*d)->data);
+
+      **bptr = r;
+      (*bptr)++;
     }
-
-    if ( rptr == r->iris )
-    {
-      free( r->iris );
-      free( r );
-      TRIE_RECURSE( populate_predicate_results( *child, bptr, ont ) );
-      return;
-    }
-
-    *rptr = NULL;
-
-    **bptr = r;
-    (*bptr)++;
   }
 
   TRIE_RECURSE( populate_predicate_results( *child, bptr, ont ) );
@@ -981,7 +965,8 @@ char *predicate_label_to_json( pred_result *r )
   return JSON
   (
     "label": trie_to_json( r->label ),
-    "iris": JS_ARRAY( trie_to_json, r->iris )
+    "ontology": r->ont,
+    "iri": trie_to_json( r->iri )
   );
 }
 
@@ -990,10 +975,7 @@ void free_pred_results( pred_result **buf )
   pred_result **ptr;
 
   for ( ptr = buf; *ptr; ptr++ )
-  {
-    free( (*ptr)->iris );
     free( *ptr );
-  }
 }
 
 void handle_all_predicates_request( http_request *req, char *request, url_param **params )

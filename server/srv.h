@@ -102,7 +102,8 @@ struct URL_PARAM
 struct PRED_RESULT
 {
   trie *label;
-  trie **iris;
+  trie *iri;
+  char *ont;
 };
 
 /*
