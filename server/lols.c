@@ -137,7 +137,7 @@ void old_parse_lols_file(FILE *fp)
   return;
 }
 
-void add_to_data( trie ***dest, trie *datum )
+void add_to_data_worker( trie ***dest, trie *datum, int avoid_dupes )
 {
   trie **data;
   int cnt;
@@ -150,8 +150,20 @@ void add_to_data( trie ***dest, trie *datum )
   }
   else
   {
-    for ( data = *dest, cnt = 0; *data; data++ )
-      cnt++;
+    if ( avoid_dupes )
+    {
+      for ( data = *dest; *data; data++ )
+      {
+        if ( *data == datum )
+          return;
+      }
+    }
+    else
+    {
+      for ( data = *dest; *data; data++ )
+        ;
+    }
+    cnt = data - *dest;
 
     CREATE( data, trie *, cnt + 2 );
     memcpy( data, *dest, cnt * sizeof(trie*) );
@@ -159,6 +171,16 @@ void add_to_data( trie ***dest, trie *datum )
     free( *dest );
     *dest = data;
   }
+}
+
+void add_to_data( trie ***dest, trie *datum )
+{
+  add_to_data_worker( dest, datum, 0 );
+}
+
+void add_to_data_avoid_dupes( trie ***dest, trie *datum )
+{
+  add_to_data_worker( dest, datum, 1 );
 }
 
 void add_lols_predicate( char *iri_ch, char *label_ch )
@@ -172,7 +194,7 @@ void add_lols_predicate( char *iri_ch, char *label_ch )
   full = trie_strdup( iri_ch, predicates_full );
   label = trie_strdup( label_ch, predicates_short );
 
-  add_to_data( &label->data, full );
+  add_to_data_avoid_dupes( &label->data, full );
 
   lowercaserize_destructive( iri_ch );
   ont = ont_from_full( iri_ch );
