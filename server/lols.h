@@ -27,6 +27,8 @@ typedef struct TRIE trie;
 typedef struct TRIE_WRAPPER trie_wrapper;
 typedef struct UCL_SYNTAX ucl_syntax;
 typedef struct AMBIG ambig;
+typedef struct ONT_NAME ont_name;
+typedef struct CONFIG_VALUES config_values;
 
 /*
  * Structures
@@ -37,6 +39,7 @@ struct TRIE
   char *label;
   trie **children;
   trie **data;
+  char *ont;
 };
 
 struct TRIE_WRAPPER
@@ -69,6 +72,19 @@ struct AMBIG
   char *label;
 };
 
+struct ONT_NAME
+{
+  ont_name *next;
+  ont_name *prev;
+  char *namespace;
+  char *friendly;
+};
+
+struct CONFIG_VALUES
+{
+  int unresolved_ambigs_full_details;
+};
+
 /*
  * Global variables
  */
@@ -77,6 +93,11 @@ extern trie *label_to_iris;
 extern trie *label_to_iris_lowercase;
 extern trie *predicates_full;
 extern trie *predicates_short;
+
+extern int unambig_mode;
+extern config_values configs;
+extern ont_name *first_ont_name;
+extern ont_name *last_ont_name;
 
 /*
  * Function prototypes
@@ -93,6 +114,10 @@ trie **get_iris_by_label( char *label_ch );
 trie **get_iris_by_label_case_insensitive( char *label_ch );
 trie **get_autocomplete_labels( char *label_ch, int case_insens );
 void add_lols_predicate( char *iri_ch, char *label );
+char *get_ont_by_iri( char *full, char *sht );
+void mark_ambiguous_label( trie *label );
+void display_unresolved_ambig_labels( void );
+int resolve_ambig_labels(void);
 
 /*
  * srv.c
@@ -119,12 +144,13 @@ void log_string( char *txt );
 void log_linenum( int linenum );
 char *html_encode( char *str );
 void init_html_codes( void );
-char *lowercaserize( char *x );
+char *lowercaserize( const char *x );
 void lowercaserize_destructive( char *x );
 char *get_url_shortform( char *iri );
 char *url_decode(char *str);
 int is_number( const char *arg );
 void error_message( char *err );
+void error_messagef( char *err, ... );
 char *pretty_free( char *json );
 char *strdupf( const char *fmt, ... );
 char *jsonf( int paircnt, ... );;

@@ -198,4 +198,9 @@ do\
 }\
 while(0)
 
+/*
+ * Misc. macros
+ */
+#define EXIT() do exit(EXIT_SUCCESS); while(0)
+
 #endif //LOLS_MACRO_DOT_H_INCLUDE_GUARD

@@ -22,6 +22,21 @@ void log_linenum( int linenum )
   #endif
 }
 
+void error_messagef( char *err, ... )
+{
+  va_list vargs;
+
+  va_start( vargs, err );
+
+  char *tmp = vstrdupf( err, vargs );
+
+  va_end( vargs );
+
+  error_message( tmp );
+
+  free( tmp );
+}
+
 void error_message( char *err )
 {
   #ifdef LOLS_UNIX_CMDLINE
@@ -112,10 +127,10 @@ void init_html_codes( void )
   }
 }
 
-char *lowercaserize( char *x )
+char *lowercaserize( const char *x )
 {
   static char buf[MAX_STRING_LEN * 2];
-  char *xptr = x;
+  const char *xptr = x;
   char *bptr = buf;
 
   for ( ; *xptr; xptr++ )

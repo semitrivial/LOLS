@@ -1,6 +1,11 @@
 #include "lols.h"
 #include "nt_parse.h"
 
+ont_name *first_ont_name;
+ont_name *last_ont_name;
+trie_wrapper *first_ambig_label;
+trie_wrapper *last_ambig_label;
+
 void init_lols(void)
 {
   iri_to_labels = blank_trie();
@@ -56,85 +61,16 @@ void parse_lols_file(FILE *fp)
     error_message( buf );
     abort();
   }
-}
 
-void old_parse_lols_file(FILE *fp)
-{
-  char c;
-  char iri[MAX_STRING_LEN], *iriptr = iri;
-  char label[MAX_STRING_LEN], *lblptr = label;
-  int fSpace = 0;
-  int linenum = 1;
-
-  /*
-   * Variables for QUICK_GETC
-   */
-  char read_buf[READ_BLOCK_SIZE], *read_end = &read_buf[READ_BLOCK_SIZE], *read_ptr = read_end;
-  int fread_len;
-
-  log_string( "Parsing file...\n" );
-
-  for(;;)
+  if ( unambig_mode && !resolve_ambig_labels() )
   {
-    QUICK_GETC(c,fp);
+    error_message( "Error: There were ambiguous labels that could not be resolved." );
+    error_message( "This causes LOLS to halt because you are running LOLS in unambiguous mode." );
+    error_message( "In order to help LOLS resolve ambiguous labels, please specify relative priorities of ontologies in a LOLS config file.\n" );
 
-    if ( !c )
-    {
-      /*
-       * To do: fix this
-      if ( (!fSpace && iriptr != iri) || (fSpace && lblptr == label) )
-      {
-        lacking_label:
-        fprintf( stderr, "Error: last line of lols-file lacks a label\n\n" );
-        abort();
-      }
-       */
-      break;
-    }
-
-    if ( c == '\n' )
-    {
-      /*
-       *
-      if ( !fSpace )
-        goto lacking_label;
-       */
-
-      *lblptr = '\0';
-      add_lols_entry( iri, label );
-      iriptr = iri;
-      fSpace = 0;
-      linenum++;
-      continue;
-    }
-
-    if ( !fSpace && c == ' ' )
-    {
-      if ( iriptr == iri )
-      {
-        char buf[1024];
-
-        sprintf( buf, "Error on line %d of lols-file: blank IRI\n\n", linenum );
-        error_message( buf );
-
-        exit(EXIT_SUCCESS);
-      }
-
-      *iriptr = '\0';
-      lblptr = label;
-      fSpace = 1;
-      continue;
-    }
-
-    if ( fSpace )
-      *lblptr++ = c;
-    else
-      *iriptr++ = c;
+    display_unresolved_ambig_labels();
+    EXIT();
   }
-
-  log_string( "Finished parsing file.\n" );
-
-  return;
 }
 
 void add_to_data_worker( trie ***dest, trie *datum, int avoid_dupes )
@@ -195,12 +131,27 @@ void add_lols_predicate( char *iri_ch, char *label_ch )
   label = trie_strdup( label_ch, predicates_short );
 
   add_to_data_avoid_dupes( &label->data, full );
+  add_to_data( &full->data, label );
+
+  if ( unambig_mode && label->data[1] && !label->data[2] )
+    mark_ambiguous_label( label );
 
   lowercaserize_destructive( iri_ch );
-  ont = ont_from_full( iri_ch );
+  ont = get_ont_by_iri( iri_ch, get_url_shortform( iri_ch ) );
 
   if ( ont )
-    full->data = (trie **)strdup( ont );
+    full->ont = ont;
+  else
+  {
+    if ( unambig_mode )
+    {
+      error_message( "Error: Encountered an IRI for which an ontology could not be deduced." );
+      error_messagef( "[%s]", iri_ch );
+      error_message( "This causes LOLS to halt because LOLS is being run in nonambiguous mode" );
+
+      EXIT();
+    }
+  }
 }
 
 void add_lols_entry( char *iri_ch, char *label_ch )
@@ -216,7 +167,35 @@ void add_lols_entry( char *iri_ch, char *label_ch )
   if ( (iri_shortform_ch = get_url_shortform(iri_ch)) != NULL )
   {
     trie *iri_shortform = trie_strdup( iri_shortform_ch, iri_to_labels );
+
+    if ( unambig_mode )
+    {
+      char *ont = get_ont_by_iri( iri_ch, iri_shortform_ch );
+
+      if ( !ont )
+      {
+        error_message( "Encountered an IRI with no ontology name associated with it:" );
+        error_message( iri_ch );
+        error_message( "(This causes LOLS to stop because LOLS was launched in unambiguous mode)" );
+
+        EXIT();
+      }
+
+      if ( label->data[1] && !label->data[2] )
+        mark_ambiguous_label( label );
+
+      iri->ont = ont;
+    }
+
     add_to_data( &iri_shortform->data, label );
+  }
+  else if ( unambig_mode )
+  {
+    error_message( "There was an IRI with no shotform:" );
+    error_messagef( "[%s]", iri_ch );
+    error_message( "(This causes LOLS to stop because LOLS was launched in unambiguous mode)" );
+
+    EXIT();
   }
 
   label_lowercase_ch = lowercaserize(label_ch);
@@ -270,4 +249,79 @@ trie **get_autocomplete_labels( char *label_ch, int case_insens )
   trie_search_autocomplete( label_ch, buf, case_insens ? label_to_iris_lowercase : label_to_iris );
 
   return buf;
+}
+
+char *get_ont_by_iri( char *full, char *sht )
+{
+  ont_name *o;
+  char orig;
+
+  orig = sht[-1];
+  sht[-1] = '\0';
+
+  for ( o = first_ont_name; o; o = o->next )
+  {
+    if ( !strcmp( o->namespace, full ) )
+    {
+      sht[-1] = orig;
+      return o->friendly;
+    }
+  }
+
+  sht[-1] = orig;
+  return NULL;
+}
+
+void mark_ambiguous_label( trie *label )
+{
+  trie_wrapper *w;
+
+  CREATE( w, trie_wrapper, 1 );
+  w->t = label;
+
+  LINK2( w, first_ambig_label, last_ambig_label, next, prev );
+}
+
+void display_unresolved_ambig_labels( void )
+{
+  if ( first_ambig_label == last_ambig_label )
+  {
+    error_messagef( "The ambiguous label is: [%s]", trie_to_static(first_ambig_label->t) );
+    error_messagef( "Its IRIs are:\n%s", json_format( JS_ARRAY( trie_to_json, first_ambig_label->t->data ), 1, NULL ) );
+  }
+  else
+  {
+    int i, upperlimit;
+    trie_wrapper *w;
+
+    if ( configs.unresolved_ambigs_full_details )
+    {
+      error_message( "The ambiguous labels are:" );
+      upperlimit = 64;
+    }
+    else
+    {
+      error_message( "The first few ambiguous labels are:" );
+      upperlimit = 5;
+    }
+
+    for ( i = 0, w = first_ambig_label; w && i < 10; w = w->next, i++ )
+    {
+      error_messagef( "%s", trie_to_static( w->t ) );
+
+      if ( configs.unresolved_ambigs_full_details )
+        error_messagef( "...which has IRIs:\n%s\n---------", JS_ARRAY( trie_to_json, w->t->data ) );
+    }
+
+    if ( w )
+      error_message( "(Re-run LOLS with commandline arguments '--unresolved_ambigs_full_details yes' if you want to see the full details)" );
+  }
+}
+
+int resolve_ambig_labels(void)
+{
+  if ( first_ambig_label )
+    return 0;
+  else
+    return 1;
 }

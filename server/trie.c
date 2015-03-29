@@ -33,6 +33,7 @@ trie *blank_trie( void )
   t->children = NULL;
   t->label = NULL;
   t->data = NULL;
+  t->ont = NULL;
 
   return t;
 }
