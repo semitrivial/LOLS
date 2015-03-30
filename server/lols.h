@@ -116,7 +116,7 @@ trie **get_iris_by_label_case_insensitive( char *label_ch );
 trie **get_autocomplete_labels( char *label_ch, int case_insens );
 void add_lols_predicate( char *iri_ch, char *label );
 ont_name *ont_name_by_str( char *str );
-char *get_ont_by_iri( char *full, char *sht );
+char *get_ont_by_iri( char *full );
 void mark_ambiguous_label( trie *label );
 void display_unresolved_ambig_labels( void );
 int resolve_ambig_labels(void);

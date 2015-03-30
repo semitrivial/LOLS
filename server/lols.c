@@ -137,7 +137,7 @@ void add_lols_predicate( char *iri_ch, char *label_ch )
     mark_ambiguous_label( label );
 
   lowercaserize_destructive( iri_ch );
-  ont = get_ont_by_iri( iri_ch, get_url_shortform( iri_ch ) );
+  ont = get_ont_by_iri( iri_ch );
 
   if ( ont )
     full->ont = ont;
@@ -170,7 +170,7 @@ void add_lols_entry( char *iri_ch, char *label_ch )
 
     if ( unambig_mode )
     {
-      char *ont = get_ont_by_iri( iri_ch, iri_shortform_ch );
+      char *ont = get_ont_by_iri( iri_ch );
 
       if ( !ont )
       {
@@ -262,24 +262,14 @@ ont_name *ont_name_by_str( char *str )
   return NULL;
 }
 
-char *get_ont_by_iri( char *full, char *sht )
+char *get_ont_by_iri( char *full )
 {
   ont_name *o;
-  char orig;
-
-  orig = sht[-1];
-  sht[-1] = '\0';
 
   for ( o = first_ont_name; o; o = o->next )
-  {
-    if ( !strcmp( o->namespace, full ) )
-    {
-      sht[-1] = orig;
+    if ( str_begins( full, o->namespace ) )
       return o->friendly;
-    }
-  }
 
-  sht[-1] = orig;
   return NULL;
 }
 
