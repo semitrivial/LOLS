@@ -11,6 +11,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "jsonfmt_internal.h"
 
 /*
