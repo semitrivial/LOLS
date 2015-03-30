@@ -25,10 +25,11 @@ void log_linenum( int linenum )
 void error_messagef( char *err, ... )
 {
   va_list vargs;
+  char *tmp;
 
   va_start( vargs, err );
 
-  char *tmp = vstrdupf( err, vargs );
+  tmp = vstrdupf( err, vargs );
 
   va_end( vargs );
 

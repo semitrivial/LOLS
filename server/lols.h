@@ -78,6 +78,7 @@ struct ONT_NAME
   ont_name *prev;
   char *namespace;
   char *friendly;
+  int priority;
 };
 
 struct CONFIG_VALUES
@@ -114,6 +115,7 @@ trie **get_iris_by_label( char *label_ch );
 trie **get_iris_by_label_case_insensitive( char *label_ch );
 trie **get_autocomplete_labels( char *label_ch, int case_insens );
 void add_lols_predicate( char *iri_ch, char *label );
+ont_name *ont_name_by_str( char *str );
 char *get_ont_by_iri( char *full, char *sht );
 void mark_ambiguous_label( trie *label );
 void display_unresolved_ambig_labels( void );

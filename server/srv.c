@@ -1111,6 +1111,59 @@ int parse_commandline_args( int argc, const char* argv[], const char **filename,
   return 1;
 }
 
+void parse_priority( char *s, int line, const char *filename )
+{
+  ont_name *high_priority, *low_priority;
+  char *gt, *left, *right;
+
+  for ( gt = s; *gt; gt++ )
+    if ( *gt == '>' )
+      break;
+
+  if ( !*gt )
+  {
+    error_messagef( "Line %d of file %s:\n", line, filename );
+    error_message( "No > found.\n" );
+    EXIT();
+  }
+
+  right = &gt[1];
+
+  while ( *right == ' ' )
+    right++;
+
+  while ( gt > s && gt[-1] == ' ' )
+    gt--;
+
+  *gt = '\0';
+
+  left = s;
+
+  high_priority = ont_name_by_str( left );
+
+  if ( !high_priority )
+  {
+    error_messagef( "Line %d of file %s:\n", line, filename );
+    error_messagef( "Ontology [%s] could not be found\n", left );
+    EXIT();
+  }
+
+  low_priority = ont_name_by_str( right );
+
+  if ( !low_priority )
+  {
+    error_messagef( "Line %d of file %s:\n", line, filename );
+    error_messagef( "Ontology [%s] could not be found\n", right );
+    EXIT();
+  }
+
+  if ( low_priority == high_priority )
+    return;
+
+  if ( low_priority->priority + 1 > high_priority->priority )
+    high_priority->priority = low_priority->priority + 1;
+}
+
 int parse_config_file( const char *filename )
 {
   FILE *fp = fopen( filename, "r" );
@@ -1140,6 +1193,9 @@ int parse_config_file( const char *filename )
 
     line++;
 
+    if ( !*buf || *buf == '#' )
+      continue;
+
     for ( space = buf; *space; space++ )
       if ( *space == ' ' )
         break;
@@ -1152,6 +1208,13 @@ int parse_config_file( const char *filename )
     }
 
     *space = '\0';
+
+    if ( !strcmp( buf, "Priority" ) )
+    {
+      parse_priority( &space[1], line, filename );
+      continue;
+    }
+
     namespace = buf;
     friendly = &space[1];
 
@@ -1167,6 +1230,7 @@ int parse_config_file( const char *filename )
     CREATE( n, ont_name, 1 );
     n->friendly = friendly;
     n->namespace = strdup( namespace );
+    n->priority = 0;
     LINK2( n, first_ont_name, last_ont_name, next, prev );
   }
 

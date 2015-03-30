@@ -251,6 +251,17 @@ trie **get_autocomplete_labels( char *label_ch, int case_insens )
   return buf;
 }
 
+ont_name *ont_name_by_str( char *str )
+{
+  ont_name *n;
+
+  for ( n = first_ont_name; n; n = n->next )
+    if ( !strcmp( n->friendly, str ) )
+      return n;
+
+  return NULL;
+}
+
 char *get_ont_by_iri( char *full, char *sht )
 {
   ont_name *o;
@@ -310,18 +321,81 @@ void display_unresolved_ambig_labels( void )
       error_messagef( "%s", trie_to_static( w->t ) );
 
       if ( configs.unresolved_ambigs_full_details )
-        error_messagef( "...which has IRIs:\n%s\n---------", JS_ARRAY( trie_to_json, w->t->data ) );
+        error_messagef( "...which has IRIs:\n%s\n---------", json_format( JS_ARRAY( trie_to_json, w->t->data ), 1, NULL ) );
     }
 
-    if ( w )
+    if ( !configs.unresolved_ambigs_full_details )
       error_message( "(Re-run LOLS with commandline arguments '--unresolved_ambigs_full_details yes' if you want to see the full details)" );
   }
 }
 
+int resolve_one_ambig_label( trie *sht )
+{
+  trie **iri, *best;
+  int max = -1, fTie = 0;
+
+  for ( iri = sht->data; *iri; iri++ )
+  {
+    char *ont = (*iri)->ont;
+    ont_name *n = ont_name_by_str( ont );
+    int priority = n->priority;
+
+    if ( priority > max )
+    {
+      max = priority;
+      best = *iri;
+      fTie = 0;
+    }
+    else if ( priority == max )
+      fTie = 1;
+  }
+
+  if ( fTie )
+    return 0;
+
+  free( sht->data );
+  CREATE( iri, trie *, 2 );
+  iri[0] = best;
+  iri[1] = NULL;
+  sht->data = iri;
+
+  return 1;
+}
+
 int resolve_ambig_labels(void)
 {
-  if ( first_ambig_label )
+  trie_wrapper *w, *w_next;
+  int fBad = 0;
+
+  for ( w = first_ambig_label; w; w = w->next )
+    if ( !resolve_one_ambig_label( w->t ) )
+      fBad = 1;
+
+  if ( fBad )
+  {
+    /*
+     * In order to show a more useful diagnostic:
+     * remove those labels which were successfully resolved,
+     * so only the bad ones will be listed.
+     */
+    for ( w = first_ambig_label; w; w = w_next )
+    {
+      w_next = w->next;
+
+      if ( !w->t->data[0] || !w->t->data[1] )
+        UNLINK2( w, first_ambig_label, last_ambig_label, next, prev );
+    }
+
     return 0;
-  else
-    return 1;
+  }
+
+  for ( w = first_ambig_label; w; w = w_next )
+  {
+    w_next = w->next;
+    free( w );
+  }
+
+  first_ambig_label = last_ambig_label = NULL;
+
+  return 1;
 }
