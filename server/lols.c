@@ -283,12 +283,21 @@ void mark_ambiguous_label( trie *label )
   LINK2( w, first_ambig_label, last_ambig_label, next, prev );
 }
 
+/*
+ * iri_to_json is inherently memory-leaky because it's (currently) only
+ * intended to be used immediately prior to LOLS shutting down
+ */
+char *iri_to_json( trie *iri )
+{
+  return strdupf( "%s (%s)", trie_to_static( iri ), iri->ont );
+}
+
 void display_unresolved_ambig_labels( void )
 {
   if ( first_ambig_label == last_ambig_label )
   {
     error_messagef( "The ambiguous label is: [%s]", trie_to_static(first_ambig_label->t) );
-    error_messagef( "Its IRIs are:\n%s", json_format( JS_ARRAY( trie_to_json, first_ambig_label->t->data ), 1, NULL ) );
+    error_messagef( "Its IRIs are:\n%s", json_format( JS_ARRAY( iri_to_json, first_ambig_label->t->data ), 1, NULL ) );
   }
   else
   {
@@ -311,7 +320,7 @@ void display_unresolved_ambig_labels( void )
       error_messagef( "%s", trie_to_static( w->t ) );
 
       if ( configs.unresolved_ambigs_full_details )
-        error_messagef( "...which has IRIs:\n%s\n---------", json_format( JS_ARRAY( trie_to_json, w->t->data ), 1, NULL ) );
+        error_messagef( "...which has IRIs:\n%s\n---------", json_format( JS_ARRAY( iri_to_json, w->t->data ), 1, NULL ) );
     }
 
     if ( !configs.unresolved_ambigs_full_details )
