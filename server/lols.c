@@ -316,7 +316,7 @@ void display_unresolved_ambig_labels( void )
       upperlimit = 5;
     }
 
-    for ( i = 0, w = first_ambig_label; w && i < 10; w = w->next, i++ )
+    for ( i = 0, w = first_ambig_label; w && i < upperlimit; w = w->next, i++ )
     {
       error_messagef( "%s", trie_to_static( w->t ) );
 
