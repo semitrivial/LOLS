@@ -16,9 +16,12 @@ import org.semanticweb.owlapi.util.AnnotationValueShortFormProvider;
 import org.semanticweb.owlapi.util.OWLOntologyImportsClosureSetProvider;
 import org.semanticweb.owlapi.expression.OWLEntityChecker;
 import org.semanticweb.owlapi.expression.ShortFormEntityChecker;
+import uk.ac.manchester.cs.owl.owlapi.OWLLiteralImplBoolean;
 
 public class Convert
 {
+  OWLAnnotationProperty obsolete;
+
   public static void main(String [] args) throws Exception
   {
     Convert c = new Convert();
@@ -30,6 +33,8 @@ public class Convert
     OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
     OWLOntologyLoaderConfiguration config = new OWLOntologyLoaderConfiguration();
     config.setMissingOntologyHeaderStrategy(OWLOntologyLoaderConfiguration.MissingOntologyHeaderStrategy.IMPORT_GRAPH);
+    OWLDataFactory df = manager.getOWLDataFactory();
+    obsolete = df.getOWLAnnotationProperty(IRI.create("http://www.geneontology.org/formats/oboInOwl#is_obsolete", ""));
 
     File kbfile;
     OWLOntology ont;
@@ -55,7 +60,6 @@ public class Convert
 
     IRI iri = manager.getOntologyDocumentIRI(ont);
 
-    OWLDataFactory df = OWLManager.getOWLDataFactory();
     Set<OWLOntology> onts = ont.getImportsClosure();
 
     for ( OWLOntology o : onts )
@@ -64,6 +68,9 @@ public class Convert
 
       for ( OWLClass c : classes )
       {
+        if ( is_obsolete( c, o ) )
+          continue;
+
         String cID = c.toString().trim();
 
         Set<OWLAnnotation> annots = c.getAnnotations(o, df.getRDFSLabel() );
@@ -103,6 +110,39 @@ public class Convert
     }
 
     return;
+  }
+
+  boolean is_obsolete( OWLClass c, OWLOntology o )
+  {
+    Set<OWLAnnotation> annots = c.getAnnotations(o);
+
+    for ( OWLAnnotation a : annots )
+    {
+      if ( a.getProperty().getIRI().toString().equals("http://www.geneontology.org/formats/oboInOwl#is_obsolete") )
+        return true;
+    }
+
+    return false;
+
+    /*
+     * The following doesn't work for some reason, todo: fix it.
+     * Low priority for now though, as our reference ontologies
+     * currently never explicitly say "is_obsolete false", only
+     * "is_obsolete true"
+     *
+    Set<OWLAnnotation> annots = c.getAnnotations( o, obsolete );
+
+    for ( OWLAnnotation a : annots )
+    {
+      if ( !(a.getValue() instanceof OWLLiteralImplBoolean) )
+        continue;
+
+      if ( ((OWLLiteralImplBoolean)a).parseBoolean() )
+        return true;
+    }
+
+    return false;
+     */
   }
 
   public static String shorturl(String url)
