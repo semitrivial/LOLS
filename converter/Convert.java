@@ -118,7 +118,12 @@ public class Convert
 
     for ( OWLAnnotation a : annots )
     {
-      if ( a.getProperty().getIRI().toString().equals("http://www.geneontology.org/formats/oboInOwl#is_obsolete") )
+      String iri = a.getProperty().getIRI().toString();
+
+      if ( iri.equals("http://www.geneontology.org/formats/oboInOwl#is_obsolete") )
+        return true;
+
+      if ( iri.equals("http://www.w3.org/2002/07/owl#deprecated") )
         return true;
     }
 
