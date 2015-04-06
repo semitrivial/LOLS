@@ -285,7 +285,7 @@ char *trie_to_static( trie *t )
   return &bptr[1];
 }
 
-void trie_search_autocomplete( char *label_ch, trie **buf, trie *base )
+void trie_search_autocomplete( char *label_ch, trie **buf, trie *base, ont_name *ont )
 {
   char *chptr = label_ch;
   trie *t = base;
@@ -352,10 +352,9 @@ void trie_search_autocomplete( char *label_ch, trie **buf, trie *base )
     if ( t->data )
     {
       if ( base == label_to_iris )
-        *bptr++ = t;
+        maybe_add_autocomplete_result( &bptr, t, &finds, ont );
       else
-        *bptr++ = t->data[0]->data[0];
-      finds++;
+        maybe_add_autocomplete_result( &bptr, t->data[0]->data[0], &finds, ont );
     }
 
     if ( t->children )
@@ -373,10 +372,10 @@ void trie_search_autocomplete( char *label_ch, trie **buf, trie *base )
       if ( wptr->t->data )
       {
         if ( base == label_to_iris )
-          *bptr++ = wptr->t;
+          maybe_add_autocomplete_result( &bptr, wptr->t, &finds, ont );
         else
-          *bptr++ = wptr->t->data[0]->data[0];
-        finds++;
+          maybe_add_autocomplete_result( &bptr, wptr->t->data[0]->data[0], &finds, ont );
+
         if ( finds >= MAX_AUTOCOMPLETE_RESULTS_PRESORT )
           break;
       }
@@ -406,6 +405,28 @@ void trie_search_autocomplete( char *label_ch, trie **buf, trie *base )
   }
 
   return;
+}
+
+void maybe_add_autocomplete_result( trie ***bptr, trie *t, int *finds, ont_name *n )
+{
+  trie *iri_tr;
+  char *ont;
+
+  if ( !n )
+  {
+    maybe_add_autocomplete_result_add:
+
+    **bptr = t;
+    (*bptr)++;
+    (*finds)++;
+    return;
+  }
+
+  iri_tr = t->data[0];
+  ont = get_ont_by_iri( trie_to_static( iri_tr ) );
+
+  if ( ont && !strcmp( ont, n->friendly ) )
+    goto maybe_add_autocomplete_result_add;
 }
 
 int cmp_trie_data (const void * a, const void * b)

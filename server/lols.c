@@ -239,9 +239,23 @@ trie **get_iris_by_label_case_insensitive( char *label_ch )
   return label->data;
 }
 
-trie **get_autocomplete_labels( char *label_ch, int case_insens )
+trie **get_autocomplete_labels( char *label_ch, int case_insens, url_param **params )
 {
   static trie **buf;
+  ont_name *n, bad_ont_name;
+  char *ontstr;
+
+  ontstr = get_url_param( params, "ont" );
+
+  if ( ontstr )
+  {
+    n = ont_name_by_str( ontstr );
+
+    if ( !n )
+      n = &bad_ont_name;
+  }
+  else
+    n = NULL;
 
   if ( case_insens )
     label_ch = lowercaserize( label_ch );
@@ -249,7 +263,7 @@ trie **get_autocomplete_labels( char *label_ch, int case_insens )
   if ( !buf )
     CREATE( buf, trie *, MAX_AUTOCOMPLETE_RESULTS_PRESORT + 1 );
 
-  trie_search_autocomplete( label_ch, buf, case_insens ? label_to_iris_lowercase : label_to_iris );
+  trie_search_autocomplete( label_ch, buf, case_insens ? label_to_iris_lowercase : label_to_iris, n );
 
   return buf;
 }
@@ -272,6 +286,17 @@ char *get_ont_by_iri( char *full )
   for ( o = first_ont_name; o; o = o->next )
     if ( str_begins( full, o->namespace ) )
       return o->friendly;
+
+  return NULL;
+}
+
+ont_name *get_ont_name_by_iri( char *full )
+{
+  ont_name *o;
+
+  for ( o = first_ont_name; o; o = o->next )
+    if ( str_begins( full, o->namespace ) )
+      return o;
 
   return NULL;
 }
@@ -423,7 +448,7 @@ int resolve_ambig_labels(void)
 
 int is_ignored_ontology( char *s )
 {
-  ont_name *n = ont_name_by_str( s );
+  ont_name *n = get_ont_name_by_iri( s );
 
   return n && n->ignore;
 }

@@ -195,7 +195,7 @@ void main_loop( void )
       }
       else if ( !strcmp( reqtype, "autocomp" ) || !strcmp( reqtype, "autocomplete" ) )
       {
-        data = get_autocomplete_labels( request, 0 );
+        data = get_autocomplete_labels( request, 0, params );
 
         send_200_response( req, JSON
         (
@@ -207,7 +207,7 @@ void main_loop( void )
       }
       else if ( !strcmp( reqtype, "autocomp-case-insensitive" ) || !strcmp( reqtype, "autocomplete-case-insensitive" ) )
       {
-        data = get_autocomplete_labels( request, 1 );
+        data = get_autocomplete_labels( request, 1, params );
 
         send_200_response( req, JSON
         (

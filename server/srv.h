@@ -62,7 +62,6 @@ while(0)
  */
 typedef struct HTTP_REQUEST http_request;
 typedef struct HTTP_CONN http_conn;
-typedef struct URL_PARAM url_param;
 typedef struct PRED_RESULT pred_result;
 
 struct HTTP_REQUEST
@@ -91,12 +90,6 @@ struct HTTP_CONN
   int outbuflen;
   int len;
   char *writehead;
-};
-
-struct URL_PARAM
-{
-  char *key;
-  char *val;
 };
 
 struct PRED_RESULT
@@ -146,7 +139,6 @@ char *load_file( char *filename );
 const char *parse_params( char *buf, int *fShortIRI, int *fCaseInsens, http_request *req, url_param **params );
 void handle_ucl_syntax_request( char *request, http_request *req );
 void free_url_params( url_param **buf );
-char *get_url_param( url_param **params, char *key );
 void handle_all_predicates_request( http_request *req, char *request, url_param **params );
 void handle_predicate_request( http_request *req, char *request, url_param **params );
 void handle_predicate_autocomplete_request( http_request *req, char *request, url_param **params );

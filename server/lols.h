@@ -29,6 +29,7 @@ typedef struct UCL_SYNTAX ucl_syntax;
 typedef struct AMBIG ambig;
 typedef struct ONT_NAME ont_name;
 typedef struct CONFIG_VALUES config_values;
+typedef struct URL_PARAM url_param;
 
 /*
  * Structures
@@ -88,6 +89,12 @@ struct CONFIG_VALUES
   int unresolved_ambigs_full_details;
 };
 
+struct URL_PARAM
+{
+  char *key;
+  char *val;
+};
+
 /*
  * Global variables
  */
@@ -115,10 +122,11 @@ void add_lols_entry( char *iri_ch, char *label_ch );
 trie **get_labels_by_iri( char *iri_ch );
 trie **get_iris_by_label( char *label_ch );
 trie **get_iris_by_label_case_insensitive( char *label_ch );
-trie **get_autocomplete_labels( char *label_ch, int case_insens );
+trie **get_autocomplete_labels( char *label_ch, int case_insens, url_param **params );
 void add_lols_predicate( char *iri_ch, char *label );
 ont_name *ont_name_by_str( char *str );
 char *get_ont_by_iri( char *full );
+ont_name *get_ont_name_by_iri( char *full );
 void mark_ambiguous_label( trie *label );
 void display_unresolved_ambig_labels( void );
 int resolve_ambig_labels(void);
@@ -128,6 +136,7 @@ int is_ignored_ontology( char *s );
  * srv.c
  */
 void main_loop(void);
+char *get_url_param( url_param **params, char *key );
 
 /*
  * trie.c
@@ -137,10 +146,11 @@ trie *trie_strdup( char *buf, trie *base );
 trie *trie_search( char *buf, trie *base );
 char *trie_to_static( trie *t );
 char *trie_to_json( trie *t );
-void trie_search_autocomplete( char *label_ch, trie **buf, trie *base );
+void trie_search_autocomplete( char *label_ch, trie **buf, trie *base, ont_name *ont );
 int cmp_trie_data (const void * a, const void * b);
 void **datas_to_array( trie *t );
 int count_nontrivial_members( trie *t );
+void maybe_add_autocomplete_result( trie ***bptr, trie *t, int *finds, ont_name *n );
 
 /*
  * util.c
