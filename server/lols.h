@@ -80,6 +80,7 @@ struct ONT_NAME
   char *friendly;
   int priority;
   int ignore_ambigs;
+  int ignore;
 };
 
 struct CONFIG_VALUES
@@ -121,6 +122,7 @@ char *get_ont_by_iri( char *full );
 void mark_ambiguous_label( trie *label );
 void display_unresolved_ambig_labels( void );
 int resolve_ambig_labels(void);
+int is_ignored_ontology( char *s );
 
 /*
  * srv.c

@@ -29,7 +29,8 @@ void got_triple( char *subj, char *pred, char *obj )
       obj[strlen(obj)-1] = '\0';
       subj[strlen(subj)-1] = '\0';
 
-      add_lols_entry( &subj[1], &obj[1] );
+      if ( !is_ignored_ontology( &obj[1] ) )
+        add_lols_entry( &subj[1], &obj[1] );
     }
   }
 
@@ -39,7 +40,9 @@ void got_triple( char *subj, char *pred, char *obj )
     {
       subj[strlen(subj)-1] = '\0';
       obj[strlen(obj)-1] = '\0';
-      add_lols_predicate( &subj[1], &obj[1] );
+
+      if ( !is_ignored_ontology( &obj[1] ) )
+        add_lols_predicate( &subj[1], &obj[1] );
     }
   }
 
@@ -416,4 +419,11 @@ int resolve_ambig_labels(void)
   first_ambig_label = last_ambig_label = NULL;
 
   return 1;
+}
+
+int is_ignored_ontology( char *s )
+{
+  ont_name *n = ont_name_by_str( s );
+
+  return n && n->ignore;
 }
