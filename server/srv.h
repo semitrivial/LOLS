@@ -154,3 +154,4 @@ char *get_param( url_param **params, char *key );
 int parse_commandline_args( int argc, const char* argv[], const char **filename, const char **configfile, int *port, int *unambig );
 int parse_config_file( const char *filename );
 void default_config_values( void );
+void handle_ontologies_request( http_request *req, char *request, url_param **params );

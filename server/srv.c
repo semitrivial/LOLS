@@ -217,6 +217,11 @@ void main_loop( void )
 
         goto main_loop_cleanup;
       }
+      else if ( !strcmp( reqtype, "ontologies" ) )
+      {
+        handle_ontologies_request( req, request, params );
+        goto main_loop_cleanup;
+      }
       else if ( !strcmp( reqtype, "all_predicates" ) )
       {
         handle_all_predicates_request( req, request, params );
@@ -973,6 +978,75 @@ void free_pred_results( pred_result **buf )
 
   for ( ptr = buf; *ptr; ptr++ )
     free( *ptr );
+}
+
+void handle_ontologies_request( http_request *req, char *request, url_param **params )
+{
+  char *buf, *bptr;
+  ont_name *n, *n2;
+  int cnt = 0, fFirst = 0;
+
+  for ( n = first_ont_name; n; n = n->next )
+    cnt++;
+
+  CREATE( buf, char, ((cnt+1) * 2048) + 1 );
+  sprintf( buf, "{\"ontologies\":[" );
+  bptr = &buf[strlen(buf)];
+
+  for ( n = first_ont_name; n; n = n->next )
+  {
+    char *escaped;
+    int fFirstIRI;
+
+    for ( n2 = first_ont_name; n2; n2 = n2->next )
+    {
+      if ( n2 == n )
+        break;
+
+      if ( !strcmp( n2->friendly, n->friendly ) )
+        break;
+    }
+
+    if ( n2 != n )
+      continue;
+
+    if ( fFirst )
+      *bptr++ = ',';
+    else
+      fFirst = 1;
+
+    escaped = json_escape( n->friendly );
+
+    sprintf( bptr, "{\"shortform\": \"%s\",\"iris\": [", escaped );
+    free( escaped );
+    bptr += strlen(bptr);
+
+    for ( fFirstIRI = 0, n2 = n; n2; n2 = n2->next )
+    {
+      if ( strcmp( n2->friendly, n->friendly ) )
+        continue;
+
+      if ( fFirstIRI )
+        *bptr++ = ',';
+      else
+        fFirstIRI = 1;
+
+      escaped = json_escape( n2->namespace );
+      sprintf( bptr, "\"%s\"", escaped );
+      bptr += strlen( bptr );
+      free( escaped );
+    }
+    *bptr++ = ']';
+    *bptr++ = '}';
+  }
+
+  *bptr++ = ']';
+  *bptr++ = '}';
+  *bptr++ = '\0';
+
+  send_200_response( req, buf );
+
+  free( buf );
 }
 
 void handle_all_predicates_request( http_request *req, char *request, url_param **params )
