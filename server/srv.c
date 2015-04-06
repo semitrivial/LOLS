@@ -982,8 +982,8 @@ void free_pred_results( pred_result **buf )
 
 void handle_ontologies_request( http_request *req, char *request, url_param **params )
 {
-  char *buf, *bptr;
   ont_name *n, *n2;
+  char *buf, *bptr, *formatted;
   int cnt = 0, fFirst = 0;
 
   for ( n = first_ont_name; n; n = n->next )
@@ -1044,7 +1044,9 @@ void handle_ontologies_request( http_request *req, char *request, url_param **pa
   *bptr++ = '}';
   *bptr++ = '\0';
 
-  send_200_response( req, buf );
+  formatted = json_format( buf, 2, NULL );
+
+  send_200_response( req, formatted ? formatted : buf );
 
   free( buf );
 }
