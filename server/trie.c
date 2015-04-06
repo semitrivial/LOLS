@@ -412,6 +412,9 @@ void maybe_add_autocomplete_result( trie ***bptr, trie *t, int *finds, ont_name 
   trie *iri_tr;
   char *ont;
 
+  if ( !t->data )
+    return;
+
   if ( !n )
   {
     maybe_add_autocomplete_result_add:
