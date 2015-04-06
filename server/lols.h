@@ -79,6 +79,7 @@ struct ONT_NAME
   char *namespace;
   char *friendly;
   int priority;
+  int ignore_ambigs;
 };
 
 struct CONFIG_VALUES

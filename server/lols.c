@@ -328,8 +328,22 @@ void display_unresolved_ambig_labels( void )
   }
 }
 
+int try_resolving_ambig_label_by_ignore( trie *sht, ont_name *max_ont )
+{
+  if ( !max_ont )
+    return 0;
+
+  if ( !max_ont->ignore_ambigs )
+    return 0;
+
+  free( sht->data );
+  sht->data = NULL;
+  return 1;
+}
+
 int resolve_one_ambig_label( trie *sht )
 {
+  ont_name *max_ont;
   trie **iri, *best;
   int max = -1, fTie = 0;
 
@@ -343,14 +357,19 @@ int resolve_one_ambig_label( trie *sht )
     {
       max = priority;
       best = *iri;
+      max_ont = n;
       fTie = 0;
     }
     else if ( priority == max )
+    {
       fTie = 1;
+      if ( n != max_ont )
+        max_ont = NULL;
+    }
   }
 
   if ( fTie )
-    return 0;
+    return try_resolving_ambig_label_by_ignore( sht, max_ont );
 
   free( sht->data );
   CREATE( iri, trie *, 2 );

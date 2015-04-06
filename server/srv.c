@@ -1111,6 +1111,22 @@ int parse_commandline_args( int argc, const char* argv[], const char **filename,
   return 1;
 }
 
+void parse_ignore_ambigs( char *s, int line, const char *filename )
+{
+  ont_name *which;
+
+  which = ont_name_by_str( s );
+
+  if ( !which )
+  {
+    error_messagef( "Line %d of file %s:\n", line, filename );
+    error_messagef( "Ontology [%s] was not recognized\n", s );
+    EXIT();
+  }
+
+  which->ignore_ambigs = 1;
+}
+
 void parse_priority( char *s, int line, const char *filename )
 {
   ont_name *high_priority, *low_priority;
@@ -1215,6 +1231,12 @@ int parse_config_file( const char *filename )
       continue;
     }
 
+    if ( !strcmp( buf, "IgnoreAmbigs" ) )
+    {
+      parse_ignore_ambigs( &space[1], line, filename );
+      continue;
+    }
+
     namespace = buf;
     friendly = &space[1];
 
@@ -1231,6 +1253,7 @@ int parse_config_file( const char *filename )
     n->friendly = friendly;
     n->namespace = strdup( namespace );
     n->priority = 0;
+    n->ignore_ambigs = 0;
     LINK2( n, first_ont_name, last_ont_name, next, prev );
   }
 
