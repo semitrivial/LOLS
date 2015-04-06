@@ -400,7 +400,7 @@ int resolve_ambig_labels(void)
     {
       w_next = w->next;
 
-      if ( !w->t->data[0] || !w->t->data[1] )
+      if ( !w->t->data || !w->t->data[0] || !w->t->data[1] )
         UNLINK2( w, first_ambig_label, last_ambig_label, next, prev );
     }
 
