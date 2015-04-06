@@ -283,9 +283,20 @@ size_t voidlen( void **x )
   return ptr - x;
 }
 
+char *iri_plus_ont_to_json( trie *t )
+{
+  char *ont = get_ont_by_iri( trie_to_static( t ) );
+
+  return JSON
+  (
+    "ont": ont,
+    "iri": trie_to_json( t )
+  );
+}
+
 char *label_to_iri_to_json( trie *label )
 {
-  return JS_ARRAY( trie_to_json, label->data );
+  return JS_ARRAY( iri_plus_ont_to_json, label->data );
 }
 
 char *ont_from_full( char *full )
