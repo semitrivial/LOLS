@@ -224,7 +224,7 @@ ucl_syntax *parse_ucl_syntax( char *ucl, char **err, char **maybe_err, ambig **a
 
       if ( !*maybe_err )
       {
-        CREATE( *maybe_err, char, strlen(ucl) + strlen( "Unrecognized term: " ) );
+        CREATE( *maybe_err, char, strlen(ucl) + strlen( "Unrecognized term: " ) + 1 );
         sprintf( *maybe_err, "Unrecognized term: %s", ucl );
       }
     }
