@@ -36,7 +36,7 @@ public class Convert
     OWLDataFactory df = manager.getOWLDataFactory();
     obsolete = df.getOWLAnnotationProperty(IRI.create("http://www.geneontology.org/formats/oboInOwl#is_obsolete", ""));
 
-    File kbfile;
+    File kbFile;
     OWLOntology ont;
 
     if ( args.length != 1 )
@@ -49,8 +49,8 @@ public class Convert
 
     try
     {
-      kbfile = new File(args[0]);
-      ont = manager.loadOntologyFromOntologyDocument(new FileDocumentSource(kbfile),config);
+      kbFile = new File(args[0]);
+      ont = manager.loadOntologyFromOntologyDocument(new FileDocumentSource(kbFile),config);
     }
     catch(Exception e)
     {
@@ -68,7 +68,7 @@ public class Convert
 
       for ( OWLClass c : classes )
       {
-        if ( is_obsolete( c, o ) )
+        if ( isObsolete( c, o ) )
           continue;
 
         String cID = c.toString().trim();
@@ -112,7 +112,7 @@ public class Convert
     return;
   }
 
-  boolean is_obsolete( OWLClass c, OWLOntology o )
+  boolean isObsolete( OWLClass c, OWLOntology o )
   {
     Set<OWLAnnotation> annots = c.getAnnotations(o);
 
@@ -205,4 +205,3 @@ public class Convert
     return sb.toString();
   }
 }
-
